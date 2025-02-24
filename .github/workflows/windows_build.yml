@@ -29,8 +29,11 @@ jobs:
       - name: Build Windows app
         run: flutter build windows
 
+      - name: List build directory
+        run: dir build/windows/runner/  # Это шаг для вывода структуры директорий
+
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
           name: Windows-Build
-          path: build/windows/runner/Release/
+          path: build/windows/runner/Release/  # Убедитесь, что путь правильный
