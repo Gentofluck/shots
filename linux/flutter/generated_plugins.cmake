@@ -3,7 +3,10 @@
 #
 
 list(APPEND FLUTTER_PLUGIN_LIST
+  hotkey_manager_linux
   screen_capturer_linux
+  tray_manager
+  window_size
 )
 
 list(APPEND FLUTTER_FFI_PLUGIN_LIST
