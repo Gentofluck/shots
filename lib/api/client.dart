@@ -47,7 +47,7 @@ class ShotsClient {
 		if (token == null) return false;
 
 		final response = await _getRequest("ping/$token/");
-
+		
 		if (response == "OK$token") return true;
 		else {
 			token = null; 

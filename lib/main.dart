@@ -38,7 +38,7 @@ class MyApp extends StatefulWidget {
 class _MyAppState extends State<MyApp> {
 	String pageName = 'settingsPage';
   	List<HotKey> _registeredHotKeyList = [];
-	String? _screenshotPath;
+	Uint8List? _screenshot;
 	final ShotsClient shotsClient = ShotsClient(); 
 
 	@override
@@ -57,10 +57,10 @@ class _MyAppState extends State<MyApp> {
 	}
 
 	void _keyDownHandler(HotKey hotKey) async {
-		String? screenshotPath = await ScreenshotService.captureScreen();
-		if (screenshotPath != null) {
+		Uint8List? screenshot = await ScreenshotService.captureScreen();
+		if (screenshot != null) {
 			setState(() {
-				_screenshotPath = screenshotPath;
+				_screenshot = screenshot;
 			});
 		}
 	}
@@ -128,7 +128,7 @@ class _MyAppState extends State<MyApp> {
 			) 
 			: ScreenshotPage
 			(
-				screenshotPath: _screenshotPath,
+				screenshot: _screenshot,
 				shotsClient: shotsClient
 
 			))
