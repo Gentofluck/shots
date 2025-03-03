@@ -9,16 +9,19 @@ import 'pages/screenshot.dart';
 import 'pages/auth.dart';
 import 'services/screenshot.dart';
 import 'api/client.dart';
+import 'package:window_manager/window_manager.dart';
 
 void main() async{
 	WidgetsFlutterBinding.ensureInitialized();
 
 	await hotKeyManager.unregisterAll();
+	await windowManager.ensureInitialized();
 
 	if (Platform.isMacOS || Platform.isWindows || Platform.isLinux) {
 		setWindowTitle('Shots');
 		setWindowMinSize(const Size(500, 400));
 		setWindowMaxSize(const Size(500, 400));
+		windowManager.setFullScreen(false);
   	}
 
 	runApp(MyApp());
@@ -39,21 +42,19 @@ class _MyAppState extends State<MyApp> {
 	final ShotsClient shotsClient = ShotsClient(); 
 
 	@override
-	@override
 	void initState() {
 		super.initState();
-		
-		WidgetsBinding.instance.addPostFrameCallback((_) async {
-			await shotsClient.init();
-			if (!(await shotsClient.checkToken())) {
-				setState(() {
-					pageName = 'authPage';
-				});
-			}
-		});
+		_initialize();
 	}
 
-
+	Future<void> _initialize() async {
+		await shotsClient.init();
+		if (!(await shotsClient.checkToken())) {
+			setState(() {
+			pageName = 'authPage';
+			});
+		}
+	}
 
 	void _keyDownHandler(HotKey hotKey) async {
 		String? screenshotPath = await ScreenshotService.captureScreen();
@@ -75,6 +76,7 @@ class _MyAppState extends State<MyApp> {
 	}
 
 	void _changePage(String newPageName) /*async*/ {
+		print(pageName);
 		setState(() {
 			pageName = newPageName;
 		});
