@@ -85,7 +85,7 @@ class _ScreenshotPageState extends State<ScreenshotPage> {
                       ),
 					const SizedBox(height: 20),
 
-                    ],
+                ],
         ),
       ),
     );
