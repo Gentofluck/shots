@@ -363,11 +363,9 @@ packages:
   screen_capturer:
     dependency: "direct main"
     description:
-      path: "packages/screen_capturer"
-      ref: main
-      resolved-ref: cb712e24762554ac06b6bd9b1e4849a1bc0df4ca
-      url: "https://github.com/Gentofluck/screen_capturer.git"
-    source: git
+      path: "lib/packages/screen_capturer-main/packages/screen_capturer"
+      relative: true
+    source: path
     version: "0.2.3"
   screen_capturer_linux:
     dependency: transitive

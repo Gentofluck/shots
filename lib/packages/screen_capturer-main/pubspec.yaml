@@ -1,0 +1,9 @@
+name: screen_capturer_workspace
+homepage: https://github.com/leanflutter/screen_capturer
+publish_to: none
+
+environment:
+  sdk: ">=3.0.0 <4.0.0"
+
+dev_dependencies:
+  melos: ^6.1.0
