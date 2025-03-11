@@ -73,6 +73,17 @@ class _MsScreenclip with SystemScreenCapturer {
     bool copyToClipboard = true,
     bool silent = true,
   }) async {
+    
+
+    print("erorr");
+
+    await ScreenCapturerPlatform.instance.captureScreen(
+      imagePath: '',
+    );
+
+    print("check");
+
+    /*
     String url = 'ms-screenclip://?';
     if (mode == CaptureMode.screen) {
       url += 'type=snapshot';
@@ -87,18 +98,18 @@ class _MsScreenclip with SystemScreenCapturer {
       nullptr,
       nullptr,
       SHOW_WINDOW_CMD.SW_SHOWNORMAL,
-    );
+    );*/
     await Future.delayed(const Duration(seconds: 1));
 
     while (_isScreenClipping()) {
       await Future.delayed(const Duration(milliseconds: 200));
     }
 
-    if (imagePath != null) {
+    /*if (imagePath != null) {
       await ScreenCapturerPlatform.instance.saveClipboardImageAsPngFile(
         imagePath: imagePath,
       );
-    }
+    }*/
   }
 }
 

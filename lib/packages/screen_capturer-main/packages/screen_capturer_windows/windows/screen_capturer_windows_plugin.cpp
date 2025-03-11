@@ -1,6 +1,5 @@
 #include "screen_capturer_windows_plugin.h"
 
-// This must be included before many other Windows headers.
 #include <windows.h>
 
 #include <flutter/method_channel.h>
@@ -45,6 +44,8 @@ void ScreenCapturerWindowsPlugin::CaptureScreen(
     std::unique_ptr<flutter::MethodResult<flutter::EncodableValue>> result) {
   HWND hwnd = GetDesktopWindow();
 
+  std::cout << "CaptureScreen: Начало захвата экрана" << std::endl;
+
   const flutter::EncodableMap& args =
       std::get<flutter::EncodableMap>(*method_call.arguments());
 
@@ -73,6 +74,10 @@ void ScreenCapturerWindowsPlugin::CaptureScreen(
     return;
   }
 
+  std::cout << hwnd << std::endl;
+
+  std::cout << hdcMemDC << std::endl;
+
   // Get the client area for size calculation.
   RECT rcClient;
   GetClientRect(hwnd, &rcClient);
@@ -92,6 +97,7 @@ void ScreenCapturerWindowsPlugin::CaptureScreen(
   // Create a compatible bitmap from the Window DC.
   hbitmap = CreateCompatibleBitmap(hdcWindow, rcClient.right - rcClient.left,
                                    rcClient.bottom - rcClient.top);
+  std::cout << hbitmap << std::endl;
 
   if (!hbitmap) {
     result->Error("Failed", "CreateCompatibleBitmap Failed");
@@ -106,6 +112,15 @@ void ScreenCapturerWindowsPlugin::CaptureScreen(
               rcClient.bottom - rcClient.top, hdcWindow, 0, 0, SRCCOPY)) {
     result->Error("Failed", "BitBlt has failed");
     return;
+  }
+
+  if (OpenClipboard(nullptr)) {
+      EmptyClipboard();
+      SetClipboardData(CF_BITMAP, hbitmap);
+      CloseClipboard();
+      std::cout << "Изображение сохранено в буфер обмена!" << std::endl;
+  } else {
+      result->Error("Failed", "OpenClipboard failed");
   }
 
   if (!image_path.empty()) {

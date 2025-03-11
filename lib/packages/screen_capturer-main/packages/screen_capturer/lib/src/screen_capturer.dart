@@ -53,8 +53,8 @@ class ScreenCapturer {
         imageFile.parent.create(recursive: true);
       }
     }
+    print("start1");
     if (copyToClipboard) {
-      // 如果是复制到剪切板，先清空剪切板，避免结果不正确
       Clipboard.setData(const ClipboardData(text: ''));
     }
     await _platform.systemScreenCapturer.capture(

@@ -394,10 +394,9 @@ packages:
   screen_capturer_windows:
     dependency: transitive
     description:
-      name: screen_capturer_windows
-      sha256: "141542ff0ce1dae0df9c6625182c480c973c20282dc85f866fbc9215dcbbe04f"
-      url: "https://pub.dev"
-    source: hosted
+      path: "lib/packages/screen_capturer-main/packages/screen_capturer_windows"
+      relative: true
+    source: path
     version: "0.2.2"
   screen_retriever:
     dependency: transitive

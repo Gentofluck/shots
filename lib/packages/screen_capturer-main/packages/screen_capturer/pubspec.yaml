@@ -18,7 +18,9 @@ dependencies:
   screen_capturer_linux: ^0.2.3
   screen_capturer_macos: ^0.2.2
   screen_capturer_platform_interface: ^0.2.2
-  screen_capturer_windows: ^0.2.2
+  screen_capturer_windows: 
+    path: ../screen_capturer_windows
+
 
 dev_dependencies:
   flutter_test:
