@@ -19,54 +19,106 @@ const double kBaseDpi = 96.0;
 namespace screen_capturer_windows {
 
 	HWND overlayWindow = NULL;
-	POINT startPoint, endPoint;
-	bool selecting = false;
+  POINT startPoint, endPoint;
+  bool selecting = false;
+  bool needsRedraw = false;  
 
-	LRESULT CALLBACK OverlayProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam) {
-    std::cout << "start_captur_5" << std::endl;
+  LRESULT CALLBACK OverlayProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam) {      
+      SetCursor(LoadCursor(NULL, IDC_CROSS));
 
-		switch (message) {
-			case WM_LBUTTONDOWN:
-        std::cout << "start_captur_6" << std::endl;
+      switch (message) {
+          case WM_LBUTTONDOWN:
+              selecting = true;
+              startPoint.x = LOWORD(lParam);
+              startPoint.y = HIWORD(lParam);
+              endPoint = startPoint;
+              return 0;
+          case WM_MOUSEMOVE:
+              if (selecting) {
+                  endPoint.x = LOWORD(lParam);
+                  endPoint.y = HIWORD(lParam);
 
-				selecting = true;
-				startPoint.x = LOWORD(lParam);
-				startPoint.y = HIWORD(lParam);
-				endPoint = startPoint;
-				return 0;
-			case WM_MOUSEMOVE:
-				if (selecting) {
-				endPoint.x = LOWORD(lParam);
-				endPoint.y = HIWORD(lParam);
-				InvalidateRect(hwnd, NULL, TRUE);
-				}
-				return 0;
-			case WM_LBUTTONUP:
-				selecting = false;
-				DestroyWindow(hwnd);
-				return 0;
-			case WM_PAINT: {
-				PAINTSTRUCT ps;
-				HDC hdc = BeginPaint(hwnd, &ps);
-				HBRUSH brush = CreateSolidBrush(RGB(0, 0, 0));
-				RECT rect;
-				GetClientRect(hwnd, &rect);
-				FillRect(hdc, &rect, brush);
-				SetROP2(hdc, R2_NOT);
-				SelectObject(hdc, GetStockObject(NULL_BRUSH));
-				Rectangle(hdc, startPoint.x, startPoint.y, endPoint.x, endPoint.y);
-				DeleteObject(brush);
-				EndPaint(hwnd, &ps);
-				return 0;
-			}
-		}
-		return DefWindowProc(hwnd, message, wParam, lParam);
-	}
+                  // Если координаты изменились, необходимо перерисовать
+                  if (startPoint.x != endPoint.x || startPoint.y != endPoint.y) {
+                      needsRedraw = true;
+                  }
+
+                  // Если нужно перерисовать, вызываем InvalidateRect
+                  if (needsRedraw) {
+                      InvalidateRect(hwnd, NULL, TRUE);
+                      needsRedraw = false;  // Сбрасываем флаг, чтобы не перерисовывать каждый раз
+                  }
+              }
+              return 0;
+          case WM_LBUTTONUP:
+              selecting = false;
+              DestroyWindow(hwnd);
+              return 0;
+            case WM_PAINT: {
+              PAINTSTRUCT ps;
+              HDC hdc = BeginPaint(hwnd, &ps);
+          
+              // Получаем размеры окна
+              RECT rect;
+              GetClientRect(hwnd, &rect);
+              int width = rect.right - rect.left;
+              int height = rect.bottom - rect.top;
+          
+              // Создаем новый буфер
+              HDC hdcMem = CreateCompatibleDC(hdc);
+              HBITMAP hBitmap = CreateCompatibleBitmap(hdc, width, height);
+              HGDIOBJ oldBmp = SelectObject(hdcMem, hBitmap);
+          
+              // Рисуем на буфер
+              // Заполняем внутри рамки (заливка)
+              HBRUSH fillBrush = CreateSolidBrush(RGB(0, 0, 0));  // Черный цвет для заливки
+              RECT fillRect = {startPoint.x, startPoint.y, endPoint.x, endPoint.y};
+              FillRect(hdcMem, &fillRect, fillBrush);  // Заливаем внутри рамки
+          
+              // Создаем кисть для рамки (обводки)
+              HPEN borderPen = CreatePen(PS_SOLID, 2, RGB(255, 255, 255));  // Белая рамка (цвет можно изменить)
+              SelectObject(hdcMem, borderPen);  // Выбираем кисть для рамки
+          
+              // Рисуем рамку (обводку)
+              Rectangle(hdcMem, startPoint.x, startPoint.y, endPoint.x, endPoint.y);
+          
+              // Копируем содержимое буфера на экран
+              BitBlt(hdc, 0, 0, width, height, hdcMem, 0, 0, SRCCOPY);
+          
+              // Освобождаем ресурсы
+              DeleteObject(fillBrush);
+              DeleteObject(borderPen);
+              SelectObject(hdcMem, oldBmp);
+              DeleteDC(hdcMem);
+              DeleteObject(hBitmap);
+          
+              EndPaint(hwnd, &ps);
+              return 0;
+          }
+            
+      }
+      return DefWindowProc(hwnd, message, wParam, lParam);
+  }
+
+  std::string ToBase64(const std::vector<BYTE>& input) {
+      static const char* base64_chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+      std::string ret;
+      int val = 0, valb = -6;
+      for (unsigned char c : input) {
+          val = (val << 8) + c;
+          valb += 8;
+          while (valb >= 0) {
+              ret.push_back(base64_chars[(val >> valb) & 0x3F]);
+              valb -= 6;
+          }
+      }
+      if (valb > -6) ret.push_back(base64_chars[((val << 8) >> (valb + 8)) & 0x3F]);
+      while (ret.size() % 4) ret.push_back('=');
+      return ret;
+  }
+
 
 	RECT ShowSelectionOverlay() {
-
-    std::cout << "start_captur_3" << std::endl;
-
 		WNDCLASS wc = {};
 		wc.lpfnWndProc = OverlayProc;
 		wc.hInstance = GetModuleHandle(NULL);
@@ -77,7 +129,7 @@ namespace screen_capturer_windows {
 		WS_POPUP, 0, 0, GetSystemMetrics(SM_CXSCREEN), GetSystemMetrics(SM_CYSCREEN),
 		NULL, NULL, GetModuleHandle(NULL), NULL);
 
-		SetLayeredWindowAttributes(overlayWindow, 0, 128, LWA_ALPHA);
+		SetLayeredWindowAttributes(overlayWindow, 0, 64, LWA_ALPHA);
 		ShowWindow(overlayWindow, SW_SHOW);
 		UpdateWindow(overlayWindow);
 		MSG msg;
@@ -89,7 +141,11 @@ namespace screen_capturer_windows {
 		RECT selectionRect = { min(startPoint.x, endPoint.x), min(startPoint.y, endPoint.y), 
 		max(startPoint.x, endPoint.x), max(startPoint.y, endPoint.y) };
 
-    std::cout << "start_captur_4" << std::endl;
+		startPoint.x = NULL;
+		startPoint.y = NULL;
+		endPoint.x = NULL;
+		endPoint.y = NULL;
+
 
 		return selectionRect;
 	}
@@ -116,26 +172,38 @@ namespace screen_capturer_windows {
 	void ScreenCapturerWindowsPlugin::CaptureScreen(const flutter::MethodCall<flutter::EncodableValue>& method_call, 
 	std::unique_ptr<flutter::MethodResult<flutter::EncodableValue>> result) {
 
-    std::cout << "start_captur_1" << std::endl;
-    RECT selection = ShowSelectionOverlay();
-    //HWND hwnd = GetDesktopWindow();
+    	RECT selection = ShowSelectionOverlay();
 
 		HDC hdcScreen = GetDC(NULL);
 		HDC hdcMemDC = CreateCompatibleDC(hdcScreen);
 		HBITMAP hbitmap = CreateCompatibleBitmap(hdcScreen, selection.right - selection.left, selection.bottom - selection.top);
 		SelectObject(hdcMemDC, hbitmap);
 		BitBlt(hdcMemDC, 0, 0, selection.right - selection.left, selection.bottom - selection.top, hdcScreen, selection.left, selection.top, SRCCOPY);
-		OpenClipboard(NULL);
-		EmptyClipboard();
-		SetClipboardData(CF_BITMAP, hbitmap);
-		CloseClipboard();
+		
+		CImage img;
+		img.Attach(hbitmap);
+
+		std::vector<BYTE> imgData;
+		IStream* stream = NULL;
+		CreateStreamOnHGlobal(NULL, TRUE, &stream);
+		img.Save(stream, Gdiplus::ImageFormatPNG);
+
+		ULARGE_INTEGER liSize;
+		IStream_Size(stream, &liSize);
+		DWORD len = liSize.LowPart;
+		IStream_Reset(stream);
+
+		imgData.resize(len);
+		IStream_Read(stream, imgData.data(), len);
+		stream->Release();
+
+		//std::string base64Str = ToBase64(imgData);
+
+		result->Success(imgData);
+
 		DeleteObject(hbitmap);
 		DeleteDC(hdcMemDC);
 		ReleaseDC(NULL, hdcScreen);
-
-    std::cout << "start_captur_2" << std::endl;
-
-		result->Success();
 	}
 
 	void ScreenCapturerWindowsPlugin::ReadImageFromClipboard(

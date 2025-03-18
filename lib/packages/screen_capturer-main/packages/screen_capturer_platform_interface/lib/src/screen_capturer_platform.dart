@@ -53,13 +53,13 @@ abstract class ScreenCapturerPlatform extends PlatformInterface {
     );
   }
 
-  Future<void> captureScreen({
+  Future<Uint8List> captureScreen({
     required String imagePath,
   }) async {
     throw UnimplementedError('captureScreen() has not been implemented.');
   }
 
-  Future<CapturedData?> capture({
+  Future<Uint8List> capture({
     required CaptureMode mode,
     String? imagePath,
     bool copyToClipboard = true,

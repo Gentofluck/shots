@@ -59,10 +59,10 @@ class MethodChannelScreenCapturer extends ScreenCapturerPlatform {
   }
 
   @override
-  Future<void> captureScreen({
+  Future<Uint8List> captureScreen({
     required String imagePath,
   }) async {
-    await methodChannel.invokeMethod('captureScreen', {
+    return await methodChannel.invokeMethod('captureScreen', {
       'imagePath': imagePath,
     });
   }

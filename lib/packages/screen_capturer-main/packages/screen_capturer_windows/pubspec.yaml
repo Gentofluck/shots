@@ -11,7 +11,8 @@ dependencies:
   ffi: ^2.0.2
   flutter:
     sdk: flutter
-  screen_capturer_platform_interface: ^0.2.2
+  screen_capturer_platform_interface: 
+    path: ../screen_capturer_platform_interface
   win32: '>=2.6.0 <6.0.0'
 
 dev_dependencies:

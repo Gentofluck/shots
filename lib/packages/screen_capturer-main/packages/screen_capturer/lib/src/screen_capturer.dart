@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:typed_data';
 
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
@@ -40,7 +41,7 @@ class ScreenCapturer {
   /// Captures the screen and saves it to the specified [imagePath]
   ///
   /// Returns a [CapturedData] object with the image path, width, height and base64 encoded image
-  Future<CapturedData?> capture({
+  Future<Uint8List> capture({
     CaptureMode mode = CaptureMode.region,
     String? imagePath,
     bool copyToClipboard = true,
@@ -53,17 +54,17 @@ class ScreenCapturer {
         imageFile.parent.create(recursive: true);
       }
     }
-    print("start1");
     if (copyToClipboard) {
       Clipboard.setData(const ClipboardData(text: ''));
     }
-    await _platform.systemScreenCapturer.capture(
+    Uint8List image = await _platform.systemScreenCapturer.capture(
       mode: mode,
       imagePath: imagePath,
       copyToClipboard: copyToClipboard,
       silent: silent,
     );
 
+    /*
     Uint8List? imageBytes;
     if (imageFile != null && imageFile.existsSync()) {
       imageBytes = imageFile.readAsBytesSync();
@@ -73,7 +74,6 @@ class ScreenCapturer {
     }
 
     if (imageBytes != null) {
-      // 系统截图命令当传入复制到剪切板时，不会保存到文件，所以这里需要手动保存
       if (imageFile != null && !imageFile.existsSync()) {
         imageFile.writeAsBytesSync(imageBytes);
       }
@@ -84,8 +84,8 @@ class ScreenCapturer {
         imageHeight: decodedImage.height,
         imageBytes: imageBytes,
       );
-    }
-    return null;
+    }*/
+    return image;
   }
 }
 

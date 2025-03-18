@@ -10,7 +10,8 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
-  screen_capturer_platform_interface: ^0.2.2
+  screen_capturer_platform_interface: 
+    path: ../screen_capturer_platform_interface
   shell_executor: ^0.1.6
 
 dev_dependencies:
