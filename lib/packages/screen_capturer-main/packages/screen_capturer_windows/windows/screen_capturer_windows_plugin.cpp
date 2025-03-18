@@ -12,244 +12,225 @@
 #include <map>
 #include <memory>
 #include <sstream>
+#include <vector>
 
 const double kBaseDpi = 96.0;
 
 namespace screen_capturer_windows {
 
-// static
-void ScreenCapturerWindowsPlugin::RegisterWithRegistrar(
-    flutter::PluginRegistrarWindows* registrar) {
-  auto channel =
-      std::make_unique<flutter::MethodChannel<flutter::EncodableValue>>(
-          registrar->messenger(), "dev.leanflutter.plugins/screen_capturer",
-          &flutter::StandardMethodCodec::GetInstance());
+	HWND overlayWindow = NULL;
+	POINT startPoint, endPoint;
+	bool selecting = false;
 
-  auto plugin = std::make_unique<ScreenCapturerWindowsPlugin>();
+	LRESULT CALLBACK OverlayProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam) {
+		switch (message) {
+			case WM_LBUTTONDOWN:
+				selecting = true;
+				startPoint.x = LOWORD(lParam);
+				startPoint.y = HIWORD(lParam);
+				endPoint = startPoint;
+				return 0;
+			case WM_MOUSEMOVE:
+				if (selecting) {
+				endPoint.x = LOWORD(lParam);
+				endPoint.y = HIWORD(lParam);
+				InvalidateRect(hwnd, NULL, TRUE);
+				}
+				return 0;
+			case WM_LBUTTONUP:
+				selecting = false;
+				DestroyWindow(hwnd);
+				return 0;
+			case WM_PAINT: {
+				PAINTSTRUCT ps;
+				HDC hdc = BeginPaint(hwnd, &ps);
+				HBRUSH brush = CreateSolidBrush(RGB(0, 0, 0));
+				RECT rect;
+				GetClientRect(hwnd, &rect);
+				FillRect(hdc, &rect, brush);
+				SetROP2(hdc, R2_NOT);
+				SelectObject(hdc, GetStockObject(NULL_BRUSH));
+				Rectangle(hdc, startPoint.x, startPoint.y, endPoint.x, endPoint.y);
+				DeleteObject(brush);
+				EndPaint(hwnd, &ps);
+				return 0;
+			}
+		}
+		return DefWindowProc(hwnd, message, wParam, lParam);
+	}
 
-  channel->SetMethodCallHandler(
-      [plugin_pointer = plugin.get()](const auto& call, auto result) {
-        plugin_pointer->HandleMethodCall(call, std::move(result));
-      });
+	RECT ShowSelectionOverlay() {
+		WNDCLASS wc = {};
+		wc.lpfnWndProc = OverlayProc;
+		wc.hInstance = GetModuleHandle(NULL);
+		wc.lpszClassName = L"SelectionOverlay";
+		RegisterClass(&wc);
+	  
+		overlayWindow = CreateWindowEx(WS_EX_TOPMOST | WS_EX_LAYERED, L"SelectionOverlay", NULL,
+		WS_POPUP, 0, 0, GetSystemMetrics(SM_CXSCREEN), GetSystemMetrics(SM_CYSCREEN),
+		NULL, NULL, GetModuleHandle(NULL), NULL);
 
-  registrar->AddPlugin(std::move(plugin));
-}
+		SetLayeredWindowAttributes(overlayWindow, 0, 128, LWA_ALPHA);
+		ShowWindow(overlayWindow, SW_SHOW);
+		UpdateWindow(overlayWindow);
+		MSG msg;
+		while (GetMessage(&msg, NULL, 0, 0)) {
+			TranslateMessage(&msg);
+			DispatchMessage(&msg);
+			if (!IsWindow(overlayWindow)) break;
+		}
+		RECT selectionRect = { min(startPoint.x, endPoint.x), min(startPoint.y, endPoint.y), 
+		max(startPoint.x, endPoint.x), max(startPoint.y, endPoint.y) };
 
-ScreenCapturerWindowsPlugin::ScreenCapturerWindowsPlugin() {}
+		return selectionRect;
+	}
+	  
 
-ScreenCapturerWindowsPlugin::~ScreenCapturerWindowsPlugin() {}
+	void ScreenCapturerWindowsPlugin::RegisterWithRegistrar(flutter::PluginRegistrarWindows* registrar) {
+		auto channel = std::make_unique<flutter::MethodChannel<flutter::EncodableValue>>(
+		registrar->messenger(), "dev.leanflutter.plugins/screen_capturer",
+		&flutter::StandardMethodCodec::GetInstance());
 
-void ScreenCapturerWindowsPlugin::CaptureScreen(
-    const flutter::MethodCall<flutter::EncodableValue>& method_call,
-    std::unique_ptr<flutter::MethodResult<flutter::EncodableValue>> result) {
-  HWND hwnd = GetDesktopWindow();
+		auto plugin = std::make_unique<ScreenCapturerWindowsPlugin>();
+		channel->SetMethodCallHandler(
+		[plugin_pointer = plugin.get()](const auto& call, auto result) {
+			plugin_pointer->HandleMethodCall(call, std::move(result));
+		});
 
-  std::cout << "CaptureScreen: Начало захвата экрана" << std::endl;
+		registrar->AddPlugin(std::move(plugin));
+	}
 
-  const flutter::EncodableMap& args =
-      std::get<flutter::EncodableMap>(*method_call.arguments());
+	ScreenCapturerWindowsPlugin::ScreenCapturerWindowsPlugin() {}
 
-  std::string image_path =
-      std::get<std::string>(args.at(flutter::EncodableValue("imagePath")));
-  // bool copy_to_clipboard =
-  //     std::get<bool>(args.at(flutter::EncodableValue("copyToClipboard")));
+	ScreenCapturerWindowsPlugin::~ScreenCapturerWindowsPlugin() {}
 
-  flutter::EncodableMap result_map = flutter::EncodableMap();
+	void ScreenCapturerWindowsPlugin::CaptureScreen(const flutter::MethodCall<flutter::EncodableValue>& method_call, 
+	std::unique_ptr<flutter::MethodResult<flutter::EncodableValue>> result) {
 
-  HDC hdcScreen;
-  HDC hdcWindow;
-  HDC hdcMemDC = NULL;
-  HBITMAP hbitmap = NULL;
+		HDC hdcScreen = GetDC(NULL);
+		HDC hdcMemDC = CreateCompatibleDC(hdcScreen);
+		HBITMAP hbitmap = CreateCompatibleBitmap(hdcScreen, selection.right - selection.left, selection.bottom - selection.top);
+		SelectObject(hdcMemDC, hbitmap);
+		BitBlt(hdcMemDC, 0, 0, selection.right - selection.left, selection.bottom - selection.top, hdcScreen, selection.left, selection.top, SRCCOPY);
+		OpenClipboard(NULL);
+		EmptyClipboard();
+		SetClipboardData(CF_BITMAP, hbitmap);
+		CloseClipboard();
+		DeleteObject(hbitmap);
+		DeleteDC(hdcMemDC);
+		ReleaseDC(NULL, hdcScreen);
+		result->Success();
+	}
 
-  // Retrieve the handle to a display device context for the client
-  // area of the window.
-  hdcScreen = GetDC(NULL);
-  hdcWindow = GetDC(hwnd);
+	void ScreenCapturerWindowsPlugin::ReadImageFromClipboard(
+			const flutter::MethodCall<flutter::EncodableValue>& method_call,
+			std::unique_ptr<flutter::MethodResult<flutter::EncodableValue>> result) {
+		HBITMAP hbitmap = NULL;
 
-  // Create a compatible DC, which is used in a BitBlt from the window DC.
-  hdcMemDC = CreateCompatibleDC(hdcWindow);
+		OpenClipboard(nullptr);
+		hbitmap = (HBITMAP)GetClipboardData(CF_BITMAP);
+		CloseClipboard();
 
-  if (!hdcMemDC) {
-    result->Error("Failed", "CreateCompatibleDC has failed");
-    return;
-  }
+		if (hbitmap == NULL) {
+			result->Success();
+			return;
+		}
 
-  std::cout << hwnd << std::endl;
+		std::vector<BYTE> pngBuf = Hbitmap2PNG(hbitmap);
+		result->Success(flutter::EncodableValue(pngBuf));
+		pngBuf.clear();
+	}
 
-  std::cout << hdcMemDC << std::endl;
+	void ScreenCapturerWindowsPlugin::SaveClipboardImageAsPngFile(
+			const flutter::MethodCall<flutter::EncodableValue>& method_call,
+			std::unique_ptr<flutter::MethodResult<flutter::EncodableValue>> result) {
+		const flutter::EncodableMap& args =
+				std::get<flutter::EncodableMap>(*method_call.arguments());
 
-  // Get the client area for size calculation.
-  RECT rcClient;
-  GetClientRect(hwnd, &rcClient);
+		std::string image_path =
+				std::get<std::string>(args.at(flutter::EncodableValue("imagePath")));
 
-  // This is the best stretch mode.
-  SetStretchBltMode(hdcWindow, HALFTONE);
+		flutter::EncodableMap result_map = flutter::EncodableMap();
+		HBITMAP hbitmap = NULL;
 
-  // The source DC is the entire screen, and the destination DC is the current
-  // window (HWND).
-  if (!StretchBlt(hdcWindow, 0, 0, rcClient.right, rcClient.bottom, hdcScreen,
-                  0, 0, GetSystemMetrics(SM_CXSCREEN),
-                  GetSystemMetrics(SM_CYSCREEN), SRCCOPY)) {
-    result->Error("Failed", "StretchBlt has failed");
-    return;
-  }
+		OpenClipboard(nullptr);
+		hbitmap = (HBITMAP)GetClipboardData(CF_BITMAP);
+		CloseClipboard();
 
-  // Create a compatible bitmap from the Window DC.
-  hbitmap = CreateCompatibleBitmap(hdcWindow, rcClient.right - rcClient.left,
-                                   rcClient.bottom - rcClient.top);
-  std::cout << hbitmap << std::endl;
+		bool saved = SaveHbitmapToPngFile(hbitmap, image_path);
 
-  if (!hbitmap) {
-    result->Error("Failed", "CreateCompatibleBitmap Failed");
-    return;
-  }
+		if (saved) {
+			result_map[flutter::EncodableValue("imagePath")] =
+					flutter::EncodableValue(image_path.c_str());
+		}
 
-  // Select the compatible bitmap into the compatible memory DC.
-  SelectObject(hdcMemDC, hbitmap);
+		result->Success(flutter::EncodableValue(result_map));
+	}
 
-  // Bit block transfer into our compatible memory DC.
-  if (!BitBlt(hdcMemDC, 0, 0, rcClient.right - rcClient.left,
-              rcClient.bottom - rcClient.top, hdcWindow, 0, 0, SRCCOPY)) {
-    result->Error("Failed", "BitBlt has failed");
-    return;
-  }
+	std::vector<BYTE> ScreenCapturerWindowsPlugin::Hbitmap2PNG(HBITMAP hbitmap) {
+		std::vector<BYTE> buf;
+		if (hbitmap != NULL) {
+			IStream* stream = NULL;
+			CreateStreamOnHGlobal(0, TRUE, &stream);
+			CImage image;
+			ULARGE_INTEGER liSize;
 
-  if (OpenClipboard(nullptr)) {
-      EmptyClipboard();
-      SetClipboardData(CF_BITMAP, hbitmap);
-      CloseClipboard();
-      std::cout << "Изображение сохранено в буфер обмена!" << std::endl;
-  } else {
-      result->Error("Failed", "OpenClipboard failed");
-  }
+			// screenshot to png and save to stream
+			image.Attach(hbitmap);
+			image.Save(stream, Gdiplus::ImageFormatPNG);
+			IStream_Size(stream, &liSize);
+			DWORD len = liSize.LowPart;
+			IStream_Reset(stream);
+			buf.resize(len);
+			IStream_Read(stream, &buf[0], len);
+			stream->Release();
+		}
+		return buf;
+	}
 
-  if (!image_path.empty()) {
-    bool saved = SaveHbitmapToPngFile(hbitmap, image_path);
+	bool ScreenCapturerWindowsPlugin::SaveHbitmapToPngFile(HBITMAP hbitmap, std::string image_path) {
+		if (hbitmap != NULL) {
+			std::vector<BYTE> buf;
+			IStream* stream = NULL;
+			CreateStreamOnHGlobal(0, TRUE, &stream);
+			CImage image;
+			ULARGE_INTEGER liSize;
 
-    if (saved) {
-      result_map[flutter::EncodableValue("imagePath")] =
-          flutter::EncodableValue(image_path.c_str());
-    }
-  }
+			// screenshot to png and save to stream
+			image.Attach(hbitmap);
+			image.Save(stream, Gdiplus::ImageFormatPNG);
+			IStream_Size(stream, &liSize);
+			DWORD len = liSize.LowPart;
+			IStream_Reset(stream);
+			buf.resize(len);
+			IStream_Read(stream, &buf[0], len);
+			stream->Release();
 
-  DeleteObject(hbitmap);
-  DeleteObject(hdcMemDC);
-  ReleaseDC(NULL, hdcScreen);
-  ReleaseDC(hwnd, hdcWindow);
+			// put the imapge in the file
+			std::fstream fi;
+			fi.open(image_path, std::fstream::binary | std::fstream::out);
+			fi.write(reinterpret_cast<const char*>(&buf[0]), buf.size() * sizeof(BYTE));
+			fi.close();
 
-  result->Success(flutter::EncodableValue(result_map));
-}
+			return true;
+		}
+		return false;
+	}
 
-void ScreenCapturerWindowsPlugin::ReadImageFromClipboard(
-    const flutter::MethodCall<flutter::EncodableValue>& method_call,
-    std::unique_ptr<flutter::MethodResult<flutter::EncodableValue>> result) {
-  HBITMAP hbitmap = NULL;
+	void ScreenCapturerWindowsPlugin::HandleMethodCall(
+			const flutter::MethodCall<flutter::EncodableValue>& method_call,
+			std::unique_ptr<flutter::MethodResult<flutter::EncodableValue>> result) {
+		std::string method_name = method_call.method_name();
 
-  OpenClipboard(nullptr);
-  hbitmap = (HBITMAP)GetClipboardData(CF_BITMAP);
-  CloseClipboard();
+		if (method_name.compare("captureScreen") == 0) {
+			CaptureScreen(method_call, std::move(result));
+		} else if (method_name.compare("readImageFromClipboard") == 0) {
+			ReadImageFromClipboard(method_call, std::move(result));
+		} else if (method_name.compare("saveClipboardImageAsPngFile") == 0) {
+			SaveClipboardImageAsPngFile(method_call, std::move(result));
+		} else {
+			result->NotImplemented();
+		}
+	}
 
-  if (hbitmap == NULL) {
-    result->Success();
-    return;
-  }
-
-  std::vector<BYTE> pngBuf = Hbitmap2PNG(hbitmap);
-  result->Success(flutter::EncodableValue(pngBuf));
-  pngBuf.clear();
-}
-
-void ScreenCapturerWindowsPlugin::SaveClipboardImageAsPngFile(
-    const flutter::MethodCall<flutter::EncodableValue>& method_call,
-    std::unique_ptr<flutter::MethodResult<flutter::EncodableValue>> result) {
-  const flutter::EncodableMap& args =
-      std::get<flutter::EncodableMap>(*method_call.arguments());
-
-  std::string image_path =
-      std::get<std::string>(args.at(flutter::EncodableValue("imagePath")));
-
-  flutter::EncodableMap result_map = flutter::EncodableMap();
-  HBITMAP hbitmap = NULL;
-
-  OpenClipboard(nullptr);
-  hbitmap = (HBITMAP)GetClipboardData(CF_BITMAP);
-  CloseClipboard();
-
-  bool saved = SaveHbitmapToPngFile(hbitmap, image_path);
-
-  if (saved) {
-    result_map[flutter::EncodableValue("imagePath")] =
-        flutter::EncodableValue(image_path.c_str());
-  }
-
-  result->Success(flutter::EncodableValue(result_map));
-}
-
-std::vector<BYTE> ScreenCapturerWindowsPlugin::Hbitmap2PNG(HBITMAP hbitmap) {
-  std::vector<BYTE> buf;
-  if (hbitmap != NULL) {
-    IStream* stream = NULL;
-    CreateStreamOnHGlobal(0, TRUE, &stream);
-    CImage image;
-    ULARGE_INTEGER liSize;
-
-    // screenshot to png and save to stream
-    image.Attach(hbitmap);
-    image.Save(stream, Gdiplus::ImageFormatPNG);
-    IStream_Size(stream, &liSize);
-    DWORD len = liSize.LowPart;
-    IStream_Reset(stream);
-    buf.resize(len);
-    IStream_Read(stream, &buf[0], len);
-    stream->Release();
-  }
-  return buf;
-}
-
-bool ScreenCapturerWindowsPlugin::SaveHbitmapToPngFile(HBITMAP hbitmap,
-                                                       std::string image_path) {
-  if (hbitmap != NULL) {
-    std::vector<BYTE> buf;
-    IStream* stream = NULL;
-    CreateStreamOnHGlobal(0, TRUE, &stream);
-    CImage image;
-    ULARGE_INTEGER liSize;
-
-    // screenshot to png and save to stream
-    image.Attach(hbitmap);
-    image.Save(stream, Gdiplus::ImageFormatPNG);
-    IStream_Size(stream, &liSize);
-    DWORD len = liSize.LowPart;
-    IStream_Reset(stream);
-    buf.resize(len);
-    IStream_Read(stream, &buf[0], len);
-    stream->Release();
-
-    // put the imapge in the file
-    std::fstream fi;
-    fi.open(image_path, std::fstream::binary | std::fstream::out);
-    fi.write(reinterpret_cast<const char*>(&buf[0]), buf.size() * sizeof(BYTE));
-    fi.close();
-
-    return true;
-  }
-  return false;
-}
-
-void ScreenCapturerWindowsPlugin::HandleMethodCall(
-    const flutter::MethodCall<flutter::EncodableValue>& method_call,
-    std::unique_ptr<flutter::MethodResult<flutter::EncodableValue>> result) {
-  std::string method_name = method_call.method_name();
-
-  if (method_name.compare("captureScreen") == 0) {
-    CaptureScreen(method_call, std::move(result));
-  } else if (method_name.compare("readImageFromClipboard") == 0) {
-    ReadImageFromClipboard(method_call, std::move(result));
-  } else if (method_name.compare("saveClipboardImageAsPngFile") == 0) {
-    SaveClipboardImageAsPngFile(method_call, std::move(result));
-  } else {
-    result->NotImplemented();
-  }
-}
-
-}  // namespace screen_capturer_windows
+} 
