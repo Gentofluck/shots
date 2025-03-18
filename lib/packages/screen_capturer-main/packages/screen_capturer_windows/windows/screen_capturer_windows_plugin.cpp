@@ -23,8 +23,12 @@ namespace screen_capturer_windows {
 	bool selecting = false;
 
 	LRESULT CALLBACK OverlayProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam) {
+    std::cout << "start_captur_5" << std::endl;
+
 		switch (message) {
 			case WM_LBUTTONDOWN:
+        std::cout << "start_captur_6" << std::endl;
+
 				selecting = true;
 				startPoint.x = LOWORD(lParam);
 				startPoint.y = HIWORD(lParam);
@@ -60,6 +64,9 @@ namespace screen_capturer_windows {
 	}
 
 	RECT ShowSelectionOverlay() {
+
+    std::cout << "start_captur_3" << std::endl;
+
 		WNDCLASS wc = {};
 		wc.lpfnWndProc = OverlayProc;
 		wc.hInstance = GetModuleHandle(NULL);
@@ -81,6 +88,8 @@ namespace screen_capturer_windows {
 		}
 		RECT selectionRect = { min(startPoint.x, endPoint.x), min(startPoint.y, endPoint.y), 
 		max(startPoint.x, endPoint.x), max(startPoint.y, endPoint.y) };
+
+    std::cout << "start_captur_4" << std::endl;
 
 		return selectionRect;
 	}
@@ -107,6 +116,10 @@ namespace screen_capturer_windows {
 	void ScreenCapturerWindowsPlugin::CaptureScreen(const flutter::MethodCall<flutter::EncodableValue>& method_call, 
 	std::unique_ptr<flutter::MethodResult<flutter::EncodableValue>> result) {
 
+    std::cout << "start_captur_1" << std::endl;
+    RECT selection = ShowSelectionOverlay();
+    //HWND hwnd = GetDesktopWindow();
+
 		HDC hdcScreen = GetDC(NULL);
 		HDC hdcMemDC = CreateCompatibleDC(hdcScreen);
 		HBITMAP hbitmap = CreateCompatibleBitmap(hdcScreen, selection.right - selection.left, selection.bottom - selection.top);
@@ -119,6 +132,9 @@ namespace screen_capturer_windows {
 		DeleteObject(hbitmap);
 		DeleteDC(hdcMemDC);
 		ReleaseDC(NULL, hdcScreen);
+
+    std::cout << "start_captur_2" << std::endl;
+
 		result->Success();
 	}
 
