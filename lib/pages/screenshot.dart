@@ -1,6 +1,10 @@
+import 'dart:typed_data';
+import 'dart:ui';
 import 'package:flutter/material.dart';
+import 'package:flutter_colorpicker/flutter_colorpicker.dart';
 import 'package:flutter/services.dart';
 import '../api/client.dart';
+import '../services/drawing.dart';
 
 class ScreenshotPage extends StatefulWidget {
   final Uint8List? screenshot;
@@ -14,6 +18,16 @@ class ScreenshotPage extends StatefulWidget {
 
 class _ScreenshotPageState extends State<ScreenshotPage> {
   bool _isUploaded = false;
+  String _tool = 'pen'; // Текущий инструмент
+  final DrawingService _drawingService = DrawingService();
+  Offset _cursorPosition = Offset.zero; // Позиция курсора
+  final TextEditingController _brushSizeController = TextEditingController();
+
+  @override
+  void initState() {
+      super.initState();
+      _brushSizeController.text = '15'; // Инициализация контроллера
+  }
 
   @override
   void didUpdateWidget(covariant ScreenshotPage oldWidget) {
@@ -21,7 +35,7 @@ class _ScreenshotPageState extends State<ScreenshotPage> {
 
     if (widget.screenshot != oldWidget.screenshot) {
       setState(() {
-        _isUploaded = false; 
+        _isUploaded = false;
       });
     }
   }
@@ -33,6 +47,7 @@ class _ScreenshotPageState extends State<ScreenshotPage> {
 
     if (response.isNotEmpty && response != 'ERROR') {
       await Clipboard.setData(ClipboardData(text: response));
+      print("Отправка");
       setState(() {
         _isUploaded = true;
       });
@@ -41,9 +56,86 @@ class _ScreenshotPageState extends State<ScreenshotPage> {
     }
   }
 
+  void _showColorPicker(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: Text('Выберите цвет'),
+          content: SingleChildScrollView(
+            child: ColorPicker(
+              pickerColor: _drawingService.brushColor,  
+              onColorChanged: (color) {
+                setState(() {
+                  _drawingService.setBrushColor(color);  
+                });
+              },
+              showLabel: true,
+              pickerAreaHeightPercent: 0.8,
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop();
+              },
+              child: Text('Закрыть'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      appBar: AppBar(
+        title: const Text('Редактирование скриншота'),
+        actions: [
+          Container(
+            width: 70,
+            child: TextField(
+              controller: _brushSizeController,
+              keyboardType: TextInputType.numberWithOptions(decimal: true),
+              decoration: InputDecoration(
+                hintText: 'Размер',
+                border: InputBorder.none,
+                contentPadding: EdgeInsets.symmetric(vertical: 10.0),
+              ),
+              onSubmitted: (value) {
+                double newSize = double.tryParse(value) ?? 5.0;
+                if (newSize >= 1.0 && newSize <= 20.0) {
+                  //_setTool('pen', brushSize: newSize);
+                }
+              },
+            ),
+          ),
+          IconButton(
+            icon: Icon(Icons.brush),
+            onPressed: () {
+              setState(() {
+                _tool = 'pen'; 
+              });
+            },
+          ),
+          IconButton(
+            icon: Icon(Icons.undo),
+            onPressed: () {
+              setState(() {
+                _drawingService.undo();  
+              });
+            },
+          ),
+          IconButton(
+            icon: Icon(Icons.color_lens), 
+            onPressed: () {
+              _showColorPicker(context);  
+            },
+          ),
+          
+        ],
+      ),
       backgroundColor: Color(0xFFF3EFEF),
       body: Center(
         child: widget.screenshot == null
@@ -56,38 +148,83 @@ class _ScreenshotPageState extends State<ScreenshotPage> {
                     'Фото отправлено и скопировано в буфер',
                     style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                   )
-                : Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Expanded(
-                        child: Image.memory(
-                          widget.screenshot!,
-                          fit: BoxFit.contain,
-                        ),
-                      ),
-                      const SizedBox(height: 20),
-                      ElevatedButton(
-                        onPressed: () {
-                          uploadScreenshot();
-                        },
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Color(0xFF4AA37C),
-                          foregroundColor: Colors.white,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(10),
+                : GestureDetector(
+                    onPanStart: (details) {
+                      _drawingService.addPoint(details.localPosition);  
+                      setState(() {});
+                    },
+                    onPanUpdate: (details) {
+                      _drawingService.addPoint(details.localPosition);
+                      setState(() {
+                        _cursorPosition = details.localPosition;
+                      });
+                    },
+                    onPanEnd: (details) {
+                      _drawingService.endStroke();
+                      setState(() {});
+                    },
+                    child: MouseRegion(
+                      cursor: SystemMouseCursors.none,
+                      onHover: (event) {
+                        setState(() {
+                          _cursorPosition = event.localPosition;
+                        });
+                      },
+                      child: Stack(
+                        children: [
+                          Align(
+                            alignment: Alignment.center,  
+                            child: Image.memory(
+                              widget.screenshot!,
+                              fit: BoxFit.contain, 
+                            ),
                           ),
-                          padding: EdgeInsets.symmetric(vertical: 14, horizontal: 32),
-                        ),
-                        child: Text(
-                          'Отправить на сервер',
-                          style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                        ),
+                          CustomPaint(
+                            painter: DrawingPainter(_drawingService),
+                            child: Container(),
+                          ),
+                          // Если выбран инструмент "pen", рисуем кастомный курсор
+                          if (_tool == 'pen')
+                            Positioned(
+                              left: _cursorPosition.dx - 10,
+                              top: _cursorPosition.dy - 10,
+                              child: CustomPaint(
+                                size: Size(20, 20), // Размер круга
+                                painter: CursorPainter(_drawingService.brushColor),
+                              ),
+                            ),
+                        ],
                       ),
-					const SizedBox(height: 20),
-
-                ],
-        ),
+                    ),
+                  ),
+      ),
+      floatingActionButton: FloatingActionButton(
+        onPressed: uploadScreenshot,
+        backgroundColor: Color(0xFF4AA37C),
+        child: const Icon(Icons.upload),
       ),
     );
+  }
+}
+
+// Кастомный рисователь курсора
+class CursorPainter extends CustomPainter {
+  final Color color;
+
+  CursorPainter(this.color);
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = color
+      ..style = PaintingStyle.fill;
+
+    // Рисуем круг
+    canvas.drawCircle(Offset(size.width / 2, size.height / 2), size.width / 2, paint);
+  }
+
+  @override
+  bool shouldRepaint(CustomPainter oldDelegate) {
+    return false;
   }
 }

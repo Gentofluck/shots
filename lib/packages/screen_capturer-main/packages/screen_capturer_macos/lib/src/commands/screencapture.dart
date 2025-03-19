@@ -21,22 +21,29 @@ class _ScreenCapture extends Command with SystemScreenCapturer {
     throw UnimplementedError();
   }
 
-  @override
-  Future<Uint8List> capture ({
+    @override
+  Future<Uint8List> capture({
     required CaptureMode mode,
     String? imagePath,
     bool copyToClipboard = true,
     bool silent = true,
-  }) {
-    print(exec(
+  }) async { // Добавляем async
+    await exec( // Ожидаем выполнение команды
       [
         ..._knownCaptureModeArgs[mode]!,
         ...(copyToClipboard ? ['-c'] : []),
         ...(silent ? ['-x'] : []),
         ...(imagePath != null ? [imagePath] : []),
       ],
-    ));
-    return Future.value(Uint8List(0));
+    );
+    
+    final result = await ScreenCapturerPlatform.instance.readImageFromClipboard();
+
+    if (result == null) {
+      return Uint8List(0);
+    }
+
+    return result;
   }
 }
 
