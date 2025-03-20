@@ -236,10 +236,8 @@ class _ScreenshotPageState extends State<ScreenshotPage> {
                             children: [
                               Image.memory(
                                 widget.screenshot!,
-                                fit: BoxFit.none,
+                                fit: BoxFit.contain,
                                 key: _imageKey,
-                                width: 600,
-                                height: 400,
                               ),
                               Positioned(
                                 child: CustomPaint(
