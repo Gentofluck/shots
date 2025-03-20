@@ -49,7 +49,7 @@ class _HomePageState extends State<HomePage> {
 							SizedBox(height: 20),
 							GestureDetector(
 								child: Container(
-									height: 70,
+									height: 75,
 									child: Column(
 										crossAxisAlignment: CrossAxisAlignment.center,
 										children: [
@@ -59,15 +59,19 @@ class _HomePageState extends State<HomePage> {
 												style: TextStyle(
 													fontSize: 16,
 													color: Colors.black54,
+													decoration: TextDecoration.none,
 												),
 											),
 											SizedBox(height: 10),
-											HotKeyRecorder(
-												onHotKeyRecorded: (hotKey) {
+											DefaultTextStyle(
+												style: TextStyle(decoration: TextDecoration.none),
+												child: HotKeyRecorder(
+													onHotKeyRecorded: (hotKey) {
 													setState(() {
 														_hotKey = hotKey;
 													});
-												},
+													},
+												),
 											),
 										],
 									),

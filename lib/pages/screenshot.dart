@@ -18,15 +18,17 @@ class ScreenshotPage extends StatefulWidget {
 
 class _ScreenshotPageState extends State<ScreenshotPage> {
   bool _isUploaded = false;
-  String _tool = 'pen'; // Текущий инструмент
+  String _tool = 'pen';
   final DrawingService _drawingService = DrawingService();
-  Offset _cursorPosition = Offset.zero; // Позиция курсора
+  Offset _cursorPosition = Offset.zero;
+  final GlobalKey _imageKey = GlobalKey();
   final TextEditingController _brushSizeController = TextEditingController();
+  
 
   @override
   void initState() {
       super.initState();
-      _brushSizeController.text = '15'; // Инициализация контроллера
+      _brushSizeController.text = '15';
   }
 
   @override
@@ -43,11 +45,34 @@ class _ScreenshotPageState extends State<ScreenshotPage> {
   Future<void> uploadScreenshot() async {
     if (widget.screenshot == null) return;
 
-    final response = await widget.shotsClient.uploadImage(widget.screenshot!);
+    // Получаем фактический размер изображения
+    final img = await decodeImageFromList(widget.screenshot!);
+    final actualSize = Size(img.width.toDouble(), img.height.toDouble());
+
+    // Получаем размер отображаемого изображения
+    final renderBox = _imageKey.currentContext?.findRenderObject() as RenderBox?;
+    if (renderBox == null) return;
+    final displayedSize = renderBox.size;
+
+    // Вычисляем коэффициенты масштабирования
+    double scaleX = actualSize.width / displayedSize.width;
+    double scaleY = actualSize.height / displayedSize.height;
+
+    // Генерируем изображение с рисунком, увеличенным по этим коэффициентам
+    final scaledDrawing = await _drawingService.generateDrawingImage(
+      Size(actualSize.width, actualSize.height),
+      scaleX: scaleX,
+      scaleY: scaleY,
+    );
+
+    // Объединяем изображение
+    final combinedImage = await _combineImages(widget.screenshot!, scaledDrawing);
+
+    // Загружаем объединенное изображение
+    final response = await widget.shotsClient.uploadImage(combinedImage);
 
     if (response.isNotEmpty && response != 'ERROR') {
       await Clipboard.setData(ClipboardData(text: response));
-      print("Отправка");
       setState(() {
         _isUploaded = true;
       });
@@ -55,6 +80,29 @@ class _ScreenshotPageState extends State<ScreenshotPage> {
       print('Ошибка при отправке скриншота');
     }
   }
+
+
+  Future<Uint8List> _combineImages(Uint8List screenshot, Uint8List drawingImage) async {
+    final screenshotImage = await decodeImageFromList(screenshot);
+    final drawingImageData = await decodeImageFromList(drawingImage);
+
+    final recorder = PictureRecorder();
+    final canvas = Canvas(
+      recorder,
+      Rect.fromPoints(Offset(0, 0), Offset(screenshotImage.width.toDouble(), screenshotImage.height.toDouble())),
+    );
+
+    canvas.drawImage(screenshotImage, Offset(0, 0), Paint());
+
+    canvas.drawImage(drawingImageData, Offset(0, 0), Paint());
+
+    final picture = recorder.endRecording();
+    final imgWithDrawing = await picture.toImage(screenshotImage.width, screenshotImage.height);
+
+    final byteData = await imgWithDrawing.toByteData(format: ImageByteFormat.png);
+    return byteData!.buffer.asUint8List();
+  }
+
 
   void _showColorPicker(BuildContext context) {
     showDialog(
@@ -87,6 +135,8 @@ class _ScreenshotPageState extends State<ScreenshotPage> {
     );
   }
 
+
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -94,7 +144,7 @@ class _ScreenshotPageState extends State<ScreenshotPage> {
         title: const Text('Редактирование скриншота'),
         actions: [
           Container(
-            width: 70,
+            width: 40,
             child: TextField(
               controller: _brushSizeController,
               keyboardType: TextInputType.numberWithOptions(decimal: true),
@@ -103,10 +153,10 @@ class _ScreenshotPageState extends State<ScreenshotPage> {
                 border: InputBorder.none,
                 contentPadding: EdgeInsets.symmetric(vertical: 10.0),
               ),
-              onSubmitted: (value) {
+              onChanged: (value) {
                 double newSize = double.tryParse(value) ?? 5.0;
-                if (newSize >= 1.0 && newSize <= 20.0) {
-                  //_setTool('pen', brushSize: newSize);
+                if (newSize >= 1.0 && newSize <= 100.0) {
+                  _drawingService.setBrushSize(newSize);
                 }
               },
             ),
@@ -148,18 +198,26 @@ class _ScreenshotPageState extends State<ScreenshotPage> {
                     'Фото отправлено и скопировано в буфер',
                     style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                   )
-                : GestureDetector(
-                    onPanStart: (details) {
-                      _drawingService.addPoint(details.localPosition);  
+                : InteractiveViewer (
+                    panEnabled: false, 
+                    scaleEnabled: true, 
+                    minScale: 0.1, 
+                    maxScale: 5.0,
+                  child: Container(
+                    child: 
+                    Listener(
+                    onPointerDown: (details) {
+                      _drawingService.addPoint((details.localPosition));
                       setState(() {});
                     },
-                    onPanUpdate: (details) {
+                    onPointerMove: (details) {
                       _drawingService.addPoint(details.localPosition);
                       setState(() {
                         _cursorPosition = details.localPosition;
                       });
                     },
-                    onPanEnd: (details) {
+
+                    onPointerUp: (details) {
                       _drawingService.endStroke();
                       setState(() {});
                     },
@@ -172,24 +230,33 @@ class _ScreenshotPageState extends State<ScreenshotPage> {
                       },
                       child: Stack(
                         children: [
-                          Align(
-                            alignment: Alignment.center,  
-                            child: Image.memory(
-                              widget.screenshot!,
-                              fit: BoxFit.contain, 
-                            ),
+                         SizedBox(
+                          child: Stack(
+                            alignment: Alignment.topLeft,
+                            children: [
+                              Image.memory(
+                                widget.screenshot!,
+                                fit: BoxFit.none,
+                                key: _imageKey,
+                                width: 600,
+                                height: 400,
+                              ),
+                              Positioned(
+                                child: CustomPaint(
+                                  painter: DrawingPainter(_drawingService),
+                                ),
+                              ),
+                            ],
                           ),
-                          CustomPaint(
-                            painter: DrawingPainter(_drawingService),
-                            child: Container(),
-                          ),
-                          // Если выбран инструмент "pen", рисуем кастомный курсор
+                        ),
+
+                          
                           if (_tool == 'pen')
                             Positioned(
                               left: _cursorPosition.dx - 10,
                               top: _cursorPosition.dy - 10,
                               child: CustomPaint(
-                                size: Size(20, 20), // Размер круга
+                                size: Size(20, 20),
                                 painter: CursorPainter(_drawingService.brushColor),
                               ),
                             ),
@@ -197,6 +264,10 @@ class _ScreenshotPageState extends State<ScreenshotPage> {
                       ),
                     ),
                   ),
+                ),
+              ),
+              
+
       ),
       floatingActionButton: FloatingActionButton(
         onPressed: uploadScreenshot,
@@ -207,7 +278,6 @@ class _ScreenshotPageState extends State<ScreenshotPage> {
   }
 }
 
-// Кастомный рисователь курсора
 class CursorPainter extends CustomPainter {
   final Color color;
 
@@ -219,7 +289,6 @@ class CursorPainter extends CustomPainter {
       ..color = color
       ..style = PaintingStyle.fill;
 
-    // Рисуем круг
     canvas.drawCircle(Offset(size.width / 2, size.height / 2), size.width / 2, paint);
   }
 
@@ -228,3 +297,6 @@ class CursorPainter extends CustomPainter {
     return false;
   }
 }
+
+
+
