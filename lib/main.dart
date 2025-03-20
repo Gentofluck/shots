@@ -19,9 +19,6 @@ void main() async{
 
 	if (Platform.isMacOS || Platform.isWindows || Platform.isLinux) {
 		setWindowTitle('Shots');
-		setWindowMinSize(const Size(500, 400));
-		setWindowMaxSize(const Size(500, 400));
-		windowManager.setFullScreen(false);
   	}
 
 	runApp(MyApp());
