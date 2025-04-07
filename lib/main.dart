@@ -73,7 +73,6 @@ class _MyAppState extends State<MyApp> {
 	}
 
 	void _changePage(String newPageName) /*async*/ {
-		print(pageName);
 		setState(() {
 			pageName = newPageName;
 		});
