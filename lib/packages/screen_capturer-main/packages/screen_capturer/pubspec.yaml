@@ -15,8 +15,8 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
-  #screen_capturer_linux: 
-    #path: ../screen_capturer_linux
+  screen_capturer_linux: 
+    path: ../screen_capturer_linux
   screen_capturer_macos:
     path: ../screen_capturer_macos
   screen_capturer_platform_interface: 

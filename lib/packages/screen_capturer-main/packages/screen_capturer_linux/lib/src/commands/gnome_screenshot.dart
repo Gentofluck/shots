@@ -1,40 +1,31 @@
-import 'dart:io';
-
+import 'dart:typed_data';
 import 'package:screen_capturer_platform_interface/screen_capturer_platform_interface.dart';
 import 'package:shell_executor/shell_executor.dart';
 
-final Map<CaptureMode, List<String>> _knownCaptureModeArgs = {
-  CaptureMode.region: ['-a'],
-  CaptureMode.screen: [],
-  CaptureMode.window: ['-w'],
-};
-
-class _GnomeScreenshot extends Command with SystemScreenCapturer {
+class GnomeScreenshot implements SystemScreenCapturer {
   @override
-  String get executable {
-    return 'gnome-screenshot';
-  }
+  String get executable => 'gnome-screenshot';
 
   @override
-  Future<void> install() {
-    throw UnimplementedError();
-  }
-
-  @override
-  Future<ProcessResult> capture({
+  Future<Uint8List> capture({
     required CaptureMode mode,
     String? imagePath,
     bool copyToClipboard = true,
     bool silent = true,
-  }) {
-    return exec(
-      [
-        ..._knownCaptureModeArgs[mode]!,
-        ...(copyToClipboard ? ['-c'] : []),
-        ...(imagePath != null ? ['-f', imagePath] : []),
-      ],
-    );
+  }) async {
+    List<String> args = [
+      ...(copyToClipboard ? ['-c'] : []),
+      ...(imagePath != null ? ['-f', imagePath] : []),
+    ];
+
+    final result = await ShellExecutor.global.exec(executable, args);
+    if (result.exitCode != 0) {
+      throw Exception('Error while taking screenshot: ${result.stderr}');
+    }
+
+    return Uint8List.fromList(result.stdout);
   }
 }
 
-final gnomeScreenshot = _GnomeScreenshot();
+// Создаем экземпляр GnomeScreenshot
+final gnomeScreenshot = GnomeScreenshot();

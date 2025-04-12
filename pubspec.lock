@@ -375,6 +375,13 @@ packages:
       relative: true
     source: path
     version: "0.2.3"
+  screen_capturer_linux:
+    dependency: transitive
+    description:
+      path: "lib/packages/screen_capturer-main/packages/screen_capturer_linux"
+      relative: true
+    source: path
+    version: "0.2.3"
   screen_capturer_macos:
     dependency: transitive
     description:
