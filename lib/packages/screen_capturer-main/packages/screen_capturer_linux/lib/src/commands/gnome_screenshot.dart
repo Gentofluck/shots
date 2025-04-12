@@ -1,10 +1,13 @@
 import 'dart:typed_data';
 import 'package:screen_capturer_platform_interface/screen_capturer_platform_interface.dart';
 import 'package:shell_executor/shell_executor.dart';
+import 'package:flutter/services.dart';
 
 class GnomeScreenshot implements SystemScreenCapturer {
   @override
   String get executable => 'gnome-screenshot';
+
+  static const _platform = MethodChannel('dev.leanflutter.plugins/screen_capturer');
 
   @override
   Future<Uint8List> capture({
@@ -13,17 +16,13 @@ class GnomeScreenshot implements SystemScreenCapturer {
     bool copyToClipboard = true,
     bool silent = true,
   }) async {
-    List<String> args = [
-      ...(copyToClipboard ? ['-c'] : []),
-      ...(imagePath != null ? ['-f', imagePath] : []),
-    ];
+    List<String> args = ['-c -a'];
 
-    final result = await ShellExecutor.global.exec(executable, args);
-    if (result.exitCode != 0) {
-      throw Exception('Error while taking screenshot: ${result.stderr}');
-    }
+    await ShellExecutor.global.exec(executable, args);
 
-    return Uint8List.fromList(result.stdout);
+    final Uint8List? image = await _platform.invokeMethod<Uint8List>('readImageFromClipboard');
+
+    return Uint8List.fromList(image ?? []);
   }
 }
 

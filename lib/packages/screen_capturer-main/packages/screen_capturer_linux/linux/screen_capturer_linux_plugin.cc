@@ -1,11 +1,8 @@
 #include "include/screen_capturer_linux/screen_capturer_linux_plugin.h"
-
 #include <flutter_linux/flutter_linux.h>
 #include <gtk/gtk.h>
 #include <sys/utsname.h>
-
 #include <cstring>
-
 #include "screen_capturer_linux_plugin_private.h"
 
 #define SCREEN_CAPTURER_LINUX_PLUGIN(obj)                                     \
@@ -20,7 +17,48 @@ G_DEFINE_TYPE(ScreenCapturerLinuxPlugin,
               screen_capturer_linux_plugin,
               g_object_get_type())
 
-// Called when a method call is received from Flutter.
+// Callback для обработки изображения из буфера обмена
+static void clipboard_request_image_callback(GtkClipboard* clipboard,
+                                             GdkPixbuf* pixbuf,
+                                             gpointer user_data) {
+  g_autoptr(FlMethodCall) method_call = static_cast<FlMethodCall*>(user_data);
+
+  if (!pixbuf) {
+    fl_method_call_respond_success(method_call, nullptr, nullptr);
+    return;
+  }
+
+  gchar* buffer = nullptr;
+  gsize buffer_size = 0;
+  GError* error = nullptr;
+
+  // Сохраняем изображение в буфер
+  gdk_pixbuf_save_to_buffer(pixbuf, &buffer, &buffer_size, "png", &error, nullptr);
+  if (error) {
+    fl_method_call_respond_error(method_call, "0", error->message, nullptr, nullptr);
+    return;
+  }
+
+  if (!buffer) {
+    fl_method_call_respond_error(method_call, "0", "failed to get image", nullptr, nullptr);
+    return;
+  }
+
+  // Отправляем изображение обратно в Flutter
+  fl_method_call_respond_success(
+      method_call,
+      fl_value_new_uint8_list(reinterpret_cast<const uint8_t*>(buffer), buffer_size),
+      nullptr);
+}
+
+// Метод для чтения изображения из буфера обмена
+static void read_image_from_clipboard(FlMethodCall* method_call) {
+  auto* clipboard = gtk_clipboard_get_default(gdk_display_get_default());
+  gtk_clipboard_request_image(clipboard, clipboard_request_image_callback,
+                              g_object_ref(method_call));
+}
+
+// Основной обработчик методов
 static void screen_capturer_linux_plugin_handle_method_call(
     ScreenCapturerLinuxPlugin* self,
     FlMethodCall* method_call) {
@@ -36,47 +74,6 @@ static void screen_capturer_linux_plugin_handle_method_call(
   }
 
   fl_method_call_respond(method_call, response, nullptr);
-}
-
-static void clipboard_request_image_callback(GtkClipboard* clipboard,
-                                             GdkPixbuf* pixbuf,
-                                             gpointer user_data) {
-  g_autoptr(FlMethodCall) method_call = static_cast<FlMethodCall*>(user_data);
-
-  if (!pixbuf) {
-    fl_method_call_respond_success(method_call, nullptr, nullptr);
-    return;
-  }
-
-  gchar* buffer = nullptr;
-  gsize buffer_size = 0;
-  GError* error = nullptr;
-
-  gdk_pixbuf_save_to_buffer(pixbuf, &buffer, &buffer_size, "png", &error,
-                            nullptr);
-  if (error) {
-    fl_method_call_respond_error(method_call, "0", error->message, nullptr,
-                                 nullptr);
-    return;
-  }
-
-  if (!buffer) {
-    fl_method_call_respond_error(method_call, "0", "failed to get image",
-                                 nullptr, nullptr);
-    return;
-  }
-
-  fl_method_call_respond_success(
-      method_call,
-      fl_value_new_uint8_list(reinterpret_cast<const uint8_t*>(buffer),
-                              buffer_size),
-      nullptr);
-}
-
-static void read_image_from_clipboard(FlMethodCall* method_call) {
-  auto* clipboard = gtk_clipboard_get_default(gdk_display_get_default());
-  gtk_clipboard_request_image(clipboard, clipboard_request_image_callback,
-                              g_object_ref(method_call));
 }
 
 static void screen_capturer_linux_plugin_dispose(GObject* object) {
