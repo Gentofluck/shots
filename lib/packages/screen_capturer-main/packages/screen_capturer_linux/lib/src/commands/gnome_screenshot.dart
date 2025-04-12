@@ -16,7 +16,7 @@ class GnomeScreenshot implements SystemScreenCapturer {
     bool copyToClipboard = true,
     bool silent = true,
   }) async {
-    List<String> args = ['-c -a'];
+    List<String> args = ['-c', '-a'];
 
     await ShellExecutor.global.exec(executable, args);
 
