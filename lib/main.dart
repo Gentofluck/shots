@@ -54,6 +54,7 @@ class _MyAppState extends State<MyApp> {
 	}
 
 	void _keyDownHandler(HotKey hotKey) async {
+		print("handler" + hotKey.toString());
 		Uint8List? screenshot = await ScreenshotService.captureScreen();
 		if (screenshot != null) {
 			setState(() {
@@ -63,6 +64,7 @@ class _MyAppState extends State<MyApp> {
 	}
 
 	Future<void> _handleHotKeyRegister(HotKey hotKey) async {
+		print("register" + hotKey.toString());
 		await hotKeyManager.register(
 			hotKey,
 			keyDownHandler: _keyDownHandler,

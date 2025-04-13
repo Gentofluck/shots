@@ -16,13 +16,27 @@ class GnomeScreenshot implements SystemScreenCapturer {
     bool copyToClipboard = true,
     bool silent = true,
   }) async {
-    List<String> args = ['-c', '-a'];
+    // Генерируем уникальное имя временного файла
+    final tempFile = '/tmp/shot_${DateTime.now().millisecondsSinceEpoch}.png';
+    
+    try {
+      // Выполняем команду для создания скриншота и копирования в буфер
+      await ShellExecutor.global.exec(
+        'bash',
+        [
+          '-c',
+          'gnome-screenshot -a -f "$tempFile" && wl-copy < "$tempFile" && rm "$tempFile"'
+        ],
+      );
 
-    await ShellExecutor.global.exec(executable, args);
+      // Получаем изображение из буфера обмена
+      final Uint8List? image = await _platform.invokeMethod<Uint8List>('readImageFromClipboard');
 
-    final Uint8List? image = await _platform.invokeMethod<Uint8List>('readImageFromClipboard');
-
-    return Uint8List.fromList(image ?? []);
+      return Uint8List.fromList(image ?? []);
+    } catch (e) {
+      print('Error capturing screenshot: $e');
+      return Uint8List(0);
+    }
   }
 }
 
