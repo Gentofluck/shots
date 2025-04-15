@@ -59,13 +59,12 @@ class _MyAppState extends State<MyApp> {
 		await shotsClient.init();
 		if (!(await shotsClient.checkToken())) {
 			setState(() {
-			pageName = 'authPage';
+				pageName = 'authPage';
 			});
 		}
 	}
 
-	void _keyDownHandler(HotKey hotKey) async {
-		print("handler" + hotKey.toString());
+	Future<void> makeShot () async {
 		Uint8List? screenshot = await ScreenshotService.captureScreen();
 		if (screenshot != null) {
 			showWindow();
@@ -73,6 +72,11 @@ class _MyAppState extends State<MyApp> {
 				_screenshot = screenshot;
 			});
 		}
+	}
+
+	void _keyDownHandler(HotKey hotKey) async {
+		print("handler" + hotKey.toString());
+		makeShot();
 	}
 
 	Future<void> _handleHotKeyRegister(HotKey hotKey) async {
@@ -86,7 +90,7 @@ class _MyAppState extends State<MyApp> {
 		});
 	}
 
-	void _changePage(String newPageName) /*async*/ {
+	void _changePage(String newPageName) {
 		if (pageName != newPageName && newPageName == 'screenshotPage') {
 			hideWindow();
 		}
@@ -94,28 +98,6 @@ class _MyAppState extends State<MyApp> {
 		setState(() {
 			pageName = newPageName;
 		});
-
-		/*
-		await trayManager.setIcon(
-			Platform.isWindows
-				? 'assets/images/tray_icon.ico'
-				: 'assets/icon.png',
-		);
-
-		final menu = Menu(
-			items: [
-				MenuItem(
-				key: 'show_window',
-				label: 'Показать окно',
-				),
-				MenuItem.separator(),
-				MenuItem(
-				key: 'exit_app',
-				label: 'Выход',
-				),
-			],
-		);
-		await trayManager.setContextMenu(menu);*/
 	}
 
 	@override
@@ -143,8 +125,8 @@ class _MyAppState extends State<MyApp> {
 			: ScreenshotPage
 			(
 				screenshot: _screenshot,
-				shotsClient: shotsClient
-
+				shotsClient: shotsClient,
+				makeShot: makeShot,
 			))
 		);
 	}

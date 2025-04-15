@@ -21,7 +21,6 @@ class ScreenshotEditor extends StatefulWidget {
 	final void Function(bool) setIsUploaded;
   	final Future<void> Function() hideWindow;	
   	final DrawingService drawingService;
-	final bool isUploaded;
 	final ShotsClient shotsClient;
 	final double brushSize;
 	final bool isTextToolSelected;
@@ -31,7 +30,6 @@ class ScreenshotEditor extends StatefulWidget {
 		required this.tool,
 		this.screenshot,
 		required this.setIsUploaded,
-		required this.isUploaded,
 		required this.drawingService,
 		required this.shotsClient,
 		required this.hideWindow,
@@ -73,7 +71,6 @@ class _ScreenshotEditorState extends State<ScreenshotEditor> {
 
 		if (widget.screenshot != oldWidget.screenshot) {
 			_getImageDimensions();
-			widget.setIsUploaded(false);
 		}
 	}
 	
