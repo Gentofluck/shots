@@ -173,3 +173,7 @@ class StrokeChange extends DrawableEntity {
 		else if (property == 'eraser') stroke.redoVisible();
 	}
 }
+
+class ClearAll extends DrawableEntity {
+	ClearAll();
+}

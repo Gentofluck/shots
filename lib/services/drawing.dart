@@ -155,7 +155,6 @@ class DrawingService {
 			_currentStroke = null;
 		} 
 		
-		
 		switch (tool)
 		{
 			case 'pen':
@@ -244,22 +243,37 @@ class DrawingService {
 		}
 	}
 
-	void drawShadow(Canvas canvas, Path path, Paint paint) {
+	double getArrowMultiple(double totalLength, double size ) {
+		double multiple = 1;
+
+		if (totalLength / size < 6)
+		{
+			multiple = totalLength / size / 6;
+		}
+
+		return multiple;
+	}
+
+	void drawShadow(Canvas canvas, Path path, Paint paint, bool isFill) {
 		if (paint.color == Colors.transparent) return;
 
+		double strokeWidth = paint.strokeWidth;
+		
 		final shadowPaint = Paint()
 			..color = Colors.black.withOpacity(0.2)  
-			..strokeWidth = paint.strokeWidth
+			..strokeWidth = strokeWidth
 			..strokeCap = StrokeCap.round
-			..style = PaintingStyle.stroke;
+			..style = isFill ? PaintingStyle.fill : PaintingStyle.stroke;
 
-		double shadowOffset = paint.strokeWidth / 4;
+		double shadowOffset = sqrt(strokeWidth);
+
 
 		final shadowPath = path.shift(Offset(shadowOffset, shadowOffset));  
 		canvas.drawPath(shadowPath, shadowPaint);
 
-		for (int i = 1; i <= 3; i++) {
-   			final blurredShadowPath = shadowPath.shift(Offset(i * shadowOffset / 4, i * shadowOffset / 4));			
+		
+		for (int i = 1; i <= 4; i++) {
+   			final blurredShadowPath = shadowPath.shift(Offset(i * shadowOffset / 5, i * shadowOffset / 5));			
 			shadowPaint.color = Colors.black.withOpacity(0.1 + i * 0.05);
 			canvas.drawPath(blurredShadowPath, shadowPaint);
 		}
@@ -274,8 +288,8 @@ class DrawingService {
 
 		ui.Paragraph buildParagraph(Color color) {
 			final builder = ui.ParagraphBuilder(ui.ParagraphStyle(
-			textAlign: TextAlign.left,
-			fontSize: stroke.size,
+				textAlign: TextAlign.left,
+				fontSize: stroke.size,
 			))
 			..pushStyle(ui.TextStyle(color: color))
 			..addText(stroke.currentText);
@@ -293,6 +307,54 @@ class DrawingService {
 		}
 	}
 
+	void drawArrow (Path path, FigureStroke stroke, Offset start, Offset end) {
+		double totalLength = (end - start).distance;
+		double angle = atan2(end.dy - start.dy, end.dx - start.dx);
+
+		double multiple = getArrowMultiple(totalLength, stroke.size);
+
+		double arrowHeadLength = stroke.size * multiple * 2;
+		double bodyWidth = stroke.size * multiple * 1; 
+
+		Offset tail = start;
+
+		Offset base = Offset(
+			end.dx - arrowHeadLength * cos(angle),
+			end.dy - arrowHeadLength * sin(angle),
+		);
+
+		Offset headLeft = Offset(
+			base.dx - bodyWidth * 0.5 * sin(angle),
+			base.dy + bodyWidth * 0.5 * cos(angle),
+		);
+		Offset headRight = Offset(
+			base.dx + bodyWidth * 0.5 * sin(angle),
+			base.dy - bodyWidth * 0.5 * cos(angle),
+		);
+
+		Offset bodyStart = Offset(
+			tail.dx,
+			tail.dy,
+		);
+
+		Offset tipLeft = Offset(
+			end.dx - 1.5 * arrowHeadLength * cos(angle - pi / 6),
+			end.dy - 1.5 * arrowHeadLength * sin(angle - pi / 6),
+		);
+		Offset tipRight = Offset(
+			end.dx - 1.5 * arrowHeadLength * cos(angle + pi / 6),
+			end.dy - 1.5 * arrowHeadLength * sin(angle + pi / 6),
+		);
+
+		path.moveTo(bodyStart.dx, bodyStart.dy); 
+		path.lineTo(headLeft.dx, headLeft.dy);
+		path.lineTo(tipLeft.dx, tipLeft.dy);
+		path.lineTo(end.dx, end.dy); 
+		path.lineTo(tipRight.dx, tipRight.dy); 
+		path.lineTo(headRight.dx, headRight.dy); 
+		path.lineTo(bodyStart.dx, bodyStart.dy); 
+		path.close(); 
+	}
 
 
 	Path getPath(DrawableStroke stroke) {
@@ -329,23 +391,8 @@ class DrawingService {
 				Offset end = stroke.end! + stroke.getTotalTranslation();
 
 				if (stroke.type == 'arrow') {
-					path.moveTo(start.dx, start.dy);
-					path.lineTo(end.dx, end.dy);
-
-					double arrowSize = stroke.size * 5;
-					double angle = atan2(end.dy - start.dy, end.dx - start.dx);
-
-					path.moveTo(end.dx, end.dy);
-					path.lineTo(
-						end.dx - arrowSize * cos(angle - pi / 6),
-						end.dy - arrowSize * sin(angle - pi / 6),
-					);
-					path.moveTo(end.dx, end.dy);
-					path.lineTo(
-						end.dx - arrowSize * cos(angle + pi / 6),
-						end.dy - arrowSize * sin(angle + pi / 6),
-					);
-				} 
+					drawArrow(path, stroke, start, end);
+				}
 				else if (stroke.type == 'square') {
 					double left = min(start.dx, end.dx);
 					double top = min(start.dy, end.dy);
@@ -370,11 +417,18 @@ class DrawingService {
 
 	List<DrawableStroke> getFilteredStrokes() {
 		List<DrawableEntity> unitedStrokes = [
-			..._strokes, 
+			..._strokes,
 			if (_currentStroke != null) _currentStroke as DrawableEntity
 		];
+
+		int lastClearIndex = unitedStrokes.lastIndexWhere((e) => e is ClearAll);
+
+		if (lastClearIndex != -1) {
+			unitedStrokes = unitedStrokes.sublist(lastClearIndex + 1);
+		}
+
 		List<DrawableStroke> filteredStrokes = [];
-		Set<DrawableStroke> usedStrokes = Set();
+		Set<DrawableStroke> usedStrokes = {};
 
 		for (var stroke in unitedStrokes) {
 			if (_layerModifierEnabled && stroke is StrokeChange) {
@@ -382,9 +436,8 @@ class DrawingService {
 					filteredStrokes.removeWhere((item) => item == stroke.stroke);
 				}
 				filteredStrokes.add(stroke.stroke);
-				usedStrokes.add(stroke.stroke); 
-			} 
-			else if (stroke is DrawableStroke) {
+				usedStrokes.add(stroke.stroke);
+			} else if (stroke is DrawableStroke) {
 				filteredStrokes.add(stroke);
 				usedStrokes.add(stroke);
 			}
@@ -429,6 +482,13 @@ class DrawingService {
 		}
 	}
 
+	void clear() {
+		if (_currentStroke != null) _strokes.add(_currentStroke!);
+		_strokes.add(ClearAll());
+		_strokesRedo = [];
+		_currentStroke = null;
+	}
+
 	void clearCanvas() {
 		_strokes.clear();
 		_currentStroke = null;
@@ -470,8 +530,19 @@ class DrawingService {
 				paint.strokeWidth = stroke.size;
 				Path path = getPath(stroke);
 
+				if ((stroke is FigureStroke) && stroke.type == 'arrow') {
+					paint.style = PaintingStyle.fill;
+				}
+				else 
+				{
+					paint.style = PaintingStyle.stroke;
+				}
+				
 				if (stroke.shadowEnabled) {
-					drawShadow(canvas, path, paint);
+					if (stroke is FigureStroke)
+						drawShadow(canvas, path, paint, (stroke as FigureStroke).type == 'arrow');
+					else 
+						drawShadow(canvas, path, paint, false);
 				}
 
 				canvas.drawPath(path, paint);
@@ -527,8 +598,19 @@ class DrawingPainter extends CustomPainter {
 				paint.strokeWidth = stroke.size;
 				Path path = drawingService.getPath(stroke);
 
+				if ((stroke is FigureStroke) && stroke.type == 'arrow') {
+					paint.style = PaintingStyle.fill;
+				}
+				else 
+				{
+					paint.style = PaintingStyle.stroke;
+				}
+				
 				if (stroke.shadowEnabled) {
-					drawingService.drawShadow(canvas, path, paint);
+					if (stroke is FigureStroke)
+						drawingService.drawShadow(canvas, path, paint, (stroke as FigureStroke).type == 'arrow');
+					else 
+						drawingService.drawShadow(canvas, path, paint, false);
 				}
 
 				canvas.drawPath(path, paint);

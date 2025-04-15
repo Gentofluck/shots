@@ -44,6 +44,17 @@ class _MyAppState extends State<MyApp> {
 		_initialize();
 	}
 
+	Future<void> hideWindow() async {
+		await windowManager.hide();
+		await windowManager.setSkipTaskbar(true);
+	}
+
+	Future<void> showWindow() async {
+		await windowManager.show();
+		await windowManager.setSkipTaskbar(false);
+	}
+
+
 	Future<void> _initialize() async {
 		await shotsClient.init();
 		if (!(await shotsClient.checkToken())) {
@@ -57,6 +68,7 @@ class _MyAppState extends State<MyApp> {
 		print("handler" + hotKey.toString());
 		Uint8List? screenshot = await ScreenshotService.captureScreen();
 		if (screenshot != null) {
+			showWindow();
 			setState(() {
 				_screenshot = screenshot;
 			});
@@ -75,6 +87,10 @@ class _MyAppState extends State<MyApp> {
 	}
 
 	void _changePage(String newPageName) /*async*/ {
+		if (pageName != newPageName && newPageName == 'screenshotPage') {
+			hideWindow();
+		}
+
 		setState(() {
 			pageName = newPageName;
 		});

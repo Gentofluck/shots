@@ -7,6 +7,7 @@ list(APPEND FLUTTER_PLUGIN_LIST
   pasteboard
   screen_capturer_linux
   screen_retriever_linux
+  system_tray
   window_manager
   window_size
 )

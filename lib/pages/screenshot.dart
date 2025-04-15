@@ -7,6 +7,7 @@ import 'package:flutter/services.dart';
 import '../api/client.dart';
 import '../services/drawing.dart';
 import '../services/drawable_entities.dart';
+import 'package:window_manager/window_manager.dart';
 
 class ScreenshotPage extends StatefulWidget {
 	final Uint8List? screenshot;
@@ -18,12 +19,12 @@ class ScreenshotPage extends StatefulWidget {
 	_ScreenshotPageState createState() => _ScreenshotPageState();
 }
 
-class _ScreenshotPageState extends State<ScreenshotPage> {
+class _ScreenshotPageState extends State<ScreenshotPage> with WindowListener {
 	bool _isUploaded = false;
 	String _tool = 'pen';
 	bool _shadowEnabled = false;
 	bool _layerModifierEnabled = false;
-	double _brushSize = 15.0;
+	double _brushSize = 10.0;
 	double _imageWidth = 0.0;
 	double _imageHeight = 0.0;
 	bool _isShiftPressed = false;
@@ -41,6 +42,15 @@ class _ScreenshotPageState extends State<ScreenshotPage> {
 	FocusNode _textFocusNode = FocusNode();
 	bool _isTextToolSelected = false;
 
+	Future<void> hideWindow() async {
+		await windowManager.hide();
+		await windowManager.setSkipTaskbar(true);
+	}
+
+	Future<void> showWindow() async {
+		await windowManager.show();
+		await windowManager.setSkipTaskbar(false);
+	}
 
 	Widget _buildInvisibleTextInput() {
 		return Positioned(
@@ -86,11 +96,13 @@ class _ScreenshotPageState extends State<ScreenshotPage> {
 		_brushSizeController.text = _brushSize.toString();
 		_drawingService.setBrushSize(_brushSize);  
 		_rawKeyboardFocusNode.requestFocus();
+		windowManager.addListener(this);
 	}
 
 	@override
 	void dispose() {
 		_rawKeyboardFocusNode.dispose();
+		windowManager.removeListener(this);
 		super.dispose();
 	}
 
@@ -157,6 +169,7 @@ class _ScreenshotPageState extends State<ScreenshotPage> {
 			setState(() {
 				_isUploaded = true;
 			});
+			hideWindow();
 		} else {
 			print('Ошибка при отправке скриншота');
 		}
@@ -309,6 +322,10 @@ Widget build(BuildContext context) {
 				IconButton(
 					icon: const Icon(Icons.color_lens),
 					onPressed: () => _showColorPicker(context),
+				),
+				IconButton(
+					icon: const Icon(Icons.delete_forever),
+					onPressed: () => setState(() => _drawingService.clear()),
 				),
 			],
 		),

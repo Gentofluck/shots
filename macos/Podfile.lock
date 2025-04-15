@@ -16,7 +16,7 @@ PODS:
   - shared_preferences_foundation (0.0.1):
     - Flutter
     - FlutterMacOS
-  - tray_manager (0.0.1):
+  - system_tray (0.0.1):
     - FlutterMacOS
   - window_manager (0.2.0):
     - FlutterMacOS
@@ -31,7 +31,7 @@ DEPENDENCIES:
   - screen_capturer_macos (from `Flutter/ephemeral/.symlinks/plugins/screen_capturer_macos/macos`)
   - screen_retriever_macos (from `Flutter/ephemeral/.symlinks/plugins/screen_retriever_macos/macos`)
   - shared_preferences_foundation (from `Flutter/ephemeral/.symlinks/plugins/shared_preferences_foundation/darwin`)
-  - tray_manager (from `Flutter/ephemeral/.symlinks/plugins/tray_manager/macos`)
+  - system_tray (from `Flutter/ephemeral/.symlinks/plugins/system_tray/macos`)
   - window_manager (from `Flutter/ephemeral/.symlinks/plugins/window_manager/macos`)
   - window_size (from `Flutter/ephemeral/.symlinks/plugins/window_size/macos`)
 
@@ -54,8 +54,8 @@ EXTERNAL SOURCES:
     :path: Flutter/ephemeral/.symlinks/plugins/screen_retriever_macos/macos
   shared_preferences_foundation:
     :path: Flutter/ephemeral/.symlinks/plugins/shared_preferences_foundation/darwin
-  tray_manager:
-    :path: Flutter/ephemeral/.symlinks/plugins/tray_manager/macos
+  system_tray:
+    :path: Flutter/ephemeral/.symlinks/plugins/system_tray/macos
   window_manager:
     :path: Flutter/ephemeral/.symlinks/plugins/window_manager/macos
   window_size:
@@ -70,7 +70,7 @@ SPEC CHECKSUMS:
   screen_capturer_macos: 229306903c56767a7c7d3a48167ba303e95c6d29
   screen_retriever_macos: 452e51764a9e1cdb74b3c541238795849f21557f
   shared_preferences_foundation: 9e1978ff2562383bd5676f64ec4e9aa8fa06a6f7
-  tray_manager: a104b5c81b578d83f3c3d0f40a997c8b10810166
+  system_tray: 53f0cdb020c3fbee711d3fe45ae7ce730e033d2b
   window_manager: 1d01fa7ac65a6e6f83b965471b1a7fdd3f06166c
   window_size: 4bd15034e6e3d0720fd77928a7c42e5492cfece9
 
