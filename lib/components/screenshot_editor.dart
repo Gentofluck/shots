@@ -206,108 +206,103 @@ class _ScreenshotEditorState extends State<ScreenshotEditor> {
 							}
 						}
 					},
-					child: InteractiveViewer(
-						boundaryMargin: EdgeInsets.zero,
-						minScale: 0.5,
-						maxScale: 4.0,
-						constrained: false, 
+					child: SingleChildScrollView(
+						scrollDirection: Axis.horizontal,
 						child: SingleChildScrollView(
-							scrollDirection: Axis.horizontal,
-							child: SingleChildScrollView(
-								scrollDirection: Axis.vertical,
-								child: Align(
-									alignment: Alignment.topLeft,
-									child: Listener(
-										onPointerDown: (details) {
-											if (widget.tool == 'text') {
-												TextStroke? textStroke = widget.drawingService.getTextByPoint(details.localPosition);
+							scrollDirection: Axis.vertical,
+							child: Align(
+								alignment: Alignment.topLeft,
+								child: Listener(
+									onPointerDown: (details) {
+										if (widget.tool == 'text') {
+											TextStroke? textStroke = widget.drawingService.getTextByPoint(details.localPosition);
 
-												Offset start = details.localPosition;
-												String currentText = '';
-												if (textStroke != null)
-												{
-													DrawableEntity? currentStroke = widget.drawingService.currentStroke; 
-													if ((currentStroke == textStroke) || (currentStroke is StrokeChange && currentStroke.stroke == textStroke)) return;
+											Offset start = details.localPosition;
+											String currentText = '';
+											if (textStroke != null)
+											{
+												DrawableEntity? currentStroke = widget.drawingService.currentStroke; 
+												if ((currentStroke == textStroke) || (currentStroke is StrokeChange && currentStroke.stroke == textStroke)) return;
 
-													widget.drawingService.createTextEditor(textStroke);
-													start = textStroke.start + textStroke.getTotalTranslation();
-													currentText = textStroke.text.last;
-												}
-												else
-												{
-													widget.drawingService.addPoint(start, widget.tool, false);
-												}
-												_textController.text = currentText;
-												_textPosition = start;
-												_textFocusNode.unfocus();
-												Future.delayed(Duration(milliseconds: 10), () { 
-													_textFocusNode.requestFocus(); 
-												});
+												widget.drawingService.createTextEditor(textStroke);
+												start = textStroke.start + textStroke.getTotalTranslation();
+												currentText = textStroke.text.last;
 											}
-											else {
-												_textController.text = '';
-												_textPosition = Offset(0, 0);
-												_textFocusNode.unfocus();
-												_rawKeyboardFocusNode.requestFocus();
-												widget.drawingService.addPoint(details.localPosition, widget.tool, _isShiftPressed);
+											else
+											{
+												widget.drawingService.addPoint(start, widget.tool, false);
 											}
-											setState(() {});
-										},
-										onPointerMove: (details) {
-											if(widget.tool == 'text' || widget.tool == 'text_num') return;
+											_textController.text = currentText;
+											_textPosition = start;
+											_textFocusNode.unfocus();
+											Future.delayed(Duration(milliseconds: 10), () { 
+												_textFocusNode.requestFocus(); 
+											});
+										}
+										else {
+											_textController.text = '';
+											_textPosition = Offset(0, 0);
+											_textFocusNode.unfocus();
+											_rawKeyboardFocusNode.requestFocus();
 											widget.drawingService.addPoint(details.localPosition, widget.tool, _isShiftPressed);
-											setState(() => _cursorPosition = details.localPosition);
+										}
+										setState(() {});
+									},
+									onPointerMove: (details) {
+										if(widget.tool == 'text' || widget.tool == 'text_num') return;
+										widget.drawingService.addPoint(details.localPosition, widget.tool, _isShiftPressed);
+										setState(() => _cursorPosition = details.localPosition);
+									},
+									onPointerUp: (details) {
+										if(widget.tool == 'text' || widget.tool == 'text_num' || widget.tool == 'eraser') return;
+										widget.drawingService.endDrawing(details.localPosition, widget.tool);
+										setState(() {});
+									},
+									child: MouseRegion(
+										cursor: widget.tool == 'pen' ? SystemMouseCursors.none : SystemMouseCursors.precise,
+										onHover: (event) {
+											setState(() => _cursorPosition = event.localPosition);
 										},
-										onPointerUp: (details) {
-											if(widget.tool == 'text' || widget.tool == 'text_num' || widget.tool == 'eraser') return;
-											widget.drawingService.endDrawing(details.localPosition, widget.tool);
-											setState(() {});
-										},
-										child: MouseRegion(
-											cursor: widget.tool == 'pen' ? SystemMouseCursors.none : SystemMouseCursors.precise,
-											onHover: (event) {
-												setState(() => _cursorPosition = event.localPosition);
-											},
-											child: Stack(
-												children: [
-													ClipRect(
-														child: Container(
-															width: _imageWidth / pixelRatio, 
-															height: _imageHeight / pixelRatio,  
-															child: Stack(
-																children: [
-																	Image.memory(
-																		widget.screenshot!,
-																		key: _imageKey,
-																		scale: pixelRatio,
+										child: Stack(
+											children: [
+												ClipRect(
+													child: Container(
+														width: _imageWidth / pixelRatio, 
+														height: _imageHeight / pixelRatio,  
+														child: Stack(
+															children: [
+																Image.memory(
+																	widget.screenshot!,
+																	key: _imageKey,
+																	scale: pixelRatio,
+																),
+																Positioned.fill(
+																	child: CustomPaint(
+																		painter: DrawingPainter(widget.drawingService),
 																	),
-																	Positioned.fill(
-																		child: CustomPaint(
-																			painter: DrawingPainter(widget.drawingService),
-																		),
-																	),
-																],
-															),
+																),
+															],
 														),
 													),
-													if (widget.isTextToolSelected) _buildInvisibleTextInput(),
-													if (widget.tool == 'pen')
-														Positioned(
-															left: _cursorPosition.dx - widget.brushSize / 2,
-															top: _cursorPosition.dy - widget.brushSize / 2,
-															child: CustomPaint(
-																size: Size(widget.brushSize, widget.brushSize),
-																painter: CursorPainter(widget.drawingService.brushColor),
-															),
+												),
+												if (widget.isTextToolSelected) _buildInvisibleTextInput(),
+												if (widget.tool == 'pen')
+													Positioned(
+														left: _cursorPosition.dx - widget.brushSize / 2,
+														top: _cursorPosition.dy - widget.brushSize / 2,
+														child: CustomPaint(
+															size: Size(widget.brushSize, widget.brushSize),
+															painter: CursorPainter(widget.drawingService.brushColor),
 														),
-												],
-											),
+													),
+											],
 										),
 									),
 								),
 							),
 						),
 					),
+					
 				),
 				floatingActionButton: FloatingActionButton(
 					onPressed: uploadScreenshot,
