@@ -33,17 +33,9 @@ class SystemTrayService {
 
 		_systemTray.registerSystemTrayEventHandler((eventName) {
 			if (eventName == kSystemTrayEventClick) {
-				if (Platform.isWindows) {
-					_toggleWindowVisibility();
-				} else {
 					_systemTray.popUpContextMenu();
-				}
 			} else if (eventName == kSystemTrayEventRightClick) {
-				if (Platform.isWindows) {
-					_systemTray.popUpContextMenu();
-				} else {
 					_toggleWindowVisibility();
-				}
 			}
 		});
 
