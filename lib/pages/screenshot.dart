@@ -55,6 +55,33 @@ class _ScreenshotPageState extends State<ScreenshotPage> with WindowListener {
 			onMakeShot: widget.makeShot,
 		);
 		_systemTrayService.initTray();
+
+		if (widget.screenshot != null) {
+			_setWindowSizeToImageSize(widget.screenshot!);
+		}
+	}
+
+	Future<void> _setWindowSizeToImageSize(Uint8List imageData) async {
+		try {
+			final mediaQuery = MediaQuery.of(context);
+      		final devicePixelRatio = mediaQuery.devicePixelRatio;
+      
+			final codec = await instantiateImageCodec(imageData);
+			final frame = await codec.getNextFrame();
+			final image = frame.image;
+			
+			final width = image.width.toDouble() / devicePixelRatio;
+			final height = image.height.toDouble() / devicePixelRatio;
+			
+			const toolbarHeight = 84.0; 
+			await windowManager.setSize(Size(width, height + toolbarHeight));
+			
+			await windowManager.center();
+			
+			image.dispose();
+		} catch (e) {
+			print('Ошибка при установке размера окна: $e');
+		}
 	}
 
 	@override
@@ -69,6 +96,7 @@ class _ScreenshotPageState extends State<ScreenshotPage> with WindowListener {
 		super.didUpdateWidget(oldWidget);
 
 		if (widget.screenshot != oldWidget.screenshot) {
+			_setWindowSizeToImageSize(widget.screenshot!);
 			setIsUploaded(false);
 		}
 	}
@@ -121,7 +149,7 @@ class _ScreenshotPageState extends State<ScreenshotPage> with WindowListener {
 		return 
 			Scaffold(
 				appBar: AppBar(
-					title: const Text('Редактирование скриншота'),
+					title: const Text(''),
 					actions: [
 						ScreenshotToolbar(
 							brushSizeController: _brushSizeController,
