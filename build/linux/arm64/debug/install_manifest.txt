@@ -5,6 +5,7 @@
 /home/gentofluck/Рабочий стол/flutter/shots/build/linux/arm64/debug/bundle/lib/libpasteboard_plugin.so
 /home/gentofluck/Рабочий стол/flutter/shots/build/linux/arm64/debug/bundle/lib/libscreen_capturer_linux_plugin.so
 /home/gentofluck/Рабочий стол/flutter/shots/build/linux/arm64/debug/bundle/lib/libscreen_retriever_linux_plugin.so
+/home/gentofluck/Рабочий стол/flutter/shots/build/linux/arm64/debug/bundle/lib/libsystem_tray_plugin.so
 /home/gentofluck/Рабочий стол/flutter/shots/build/linux/arm64/debug/bundle/lib/libwindow_manager_plugin.so
 /home/gentofluck/Рабочий стол/flutter/shots/build/linux/arm64/debug/bundle/lib/libwindow_size_plugin.so
 /home/gentofluck/Рабочий стол/flutter/shots/build/linux/arm64/debug/bundle/data/flutter_assets/AssetManifest.bin
@@ -15,6 +16,15 @@
 /home/gentofluck/Рабочий стол/flutter/shots/build/linux/arm64/debug/bundle/data/flutter_assets/shaders/ink_sparkle.frag
 /home/gentofluck/Рабочий стол/flutter/shots/build/linux/arm64/debug/bundle/data/flutter_assets/packages/cupertino_icons/assets/CupertinoIcons.ttf
 /home/gentofluck/Рабочий стол/flutter/shots/build/linux/arm64/debug/bundle/data/flutter_assets/FontManifest.json
+/home/gentofluck/Рабочий стол/flutter/shots/build/linux/arm64/debug/bundle/data/flutter_assets/assets/gift_icon.png
+/home/gentofluck/Рабочий стол/flutter/shots/build/linux/arm64/debug/bundle/data/flutter_assets/assets/darts_icon.ico
+/home/gentofluck/Рабочий стол/flutter/shots/build/linux/arm64/debug/bundle/data/flutter_assets/assets/gift_icon.bmp
 /home/gentofluck/Рабочий стол/flutter/shots/build/linux/arm64/debug/bundle/data/flutter_assets/assets/icon.svg
+/home/gentofluck/Рабочий стол/flutter/shots/build/linux/arm64/debug/bundle/data/flutter_assets/assets/app_icon.png
+/home/gentofluck/Рабочий стол/flutter/shots/build/linux/arm64/debug/bundle/data/flutter_assets/assets/gift_icon.ico
+/home/gentofluck/Рабочий стол/flutter/shots/build/linux/arm64/debug/bundle/data/flutter_assets/assets/darts_icon.bmp
+/home/gentofluck/Рабочий стол/flutter/shots/build/linux/arm64/debug/bundle/data/flutter_assets/assets/app_icon.bmp
+/home/gentofluck/Рабочий стол/flutter/shots/build/linux/arm64/debug/bundle/data/flutter_assets/assets/darts_icon.png
+/home/gentofluck/Рабочий стол/flutter/shots/build/linux/arm64/debug/bundle/data/flutter_assets/assets/app_icon.ico
 /home/gentofluck/Рабочий стол/flutter/shots/build/linux/arm64/debug/bundle/data/flutter_assets/NOTICES.Z
 /home/gentofluck/Рабочий стол/flutter/shots/build/linux/arm64/debug/bundle/data/flutter_assets/NativeAssetsManifest.json
