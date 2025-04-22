@@ -9,6 +9,10 @@ import 'pages/auth.dart';
 import 'services/screenshot.dart';
 import 'api/client.dart';
 import 'package:window_manager/window_manager.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'dart:convert';
+
+import 'components/screenshot_editor.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -30,7 +34,7 @@ void main() async {
     await windowManager.setPreventClose(true);
   }
 
-  await hotKeyManager.unregisterAll();
+  hotKeyManager.unregisterAll();
 
   runApp(const MyApp());
 }
@@ -43,11 +47,13 @@ class MyApp extends StatefulWidget {
 }
 
 class _MyAppState extends State<MyApp> with WindowListener {
-  String pageName = 'settingsPage';
+  String? pageName;
   List<HotKey> _registeredHotKeyList = [];
   Uint8List? _screenshot;
   final ShotsClient shotsClient = ShotsClient();
 
+  final GlobalKey<ScreenshotEditorState> editorKey = GlobalKey<ScreenshotEditorState>();
+  
   @override
   void initState() {
     super.initState();
@@ -87,11 +93,30 @@ class _MyAppState extends State<MyApp> with WindowListener {
 
   Future<void> _initialize() async {
     await shotsClient.init();
+    await _loadSavedHotKeys();
     if (!(await shotsClient.checkToken())) {
       setState(() {
         pageName = 'authPage';
       });
+      showWindow();
     }
+    else 
+    {
+      if (_registeredHotKeyList.isNotEmpty)
+      {
+        setState(() {
+          pageName = 'screenshotPage';
+        });
+      }
+      else
+      {
+        setState(() {
+          pageName = 'settingsPage';
+        });
+        showWindow();
+      }
+    }
+    //await hotKeyManager.unregisterAll();
   }
 
   Future<void> makeShot() async {
@@ -109,24 +134,78 @@ class _MyAppState extends State<MyApp> with WindowListener {
     await makeShot();
   }
 
+  void _keyDownHandlerSend(HotKey hotKey) async {
+    if (editorKey != null)
+      editorKey?.currentState?.uploadScreenshot();
+  }
+
+  Future<void> saveHotKey(String keyName, HotKey hotKey) async {
+    final prefs = await SharedPreferences.getInstance();
+    prefs.setString(keyName, jsonEncode(hotKey.toJson()));
+  }
+
+
+  Future<HotKey?> loadHotKey(String keyName) async {
+    final prefs = await SharedPreferences.getInstance();
+    final jsonStr = prefs.getString(keyName);
+    if (jsonStr == null) return null;
+
+    try {
+      return HotKey.fromJson(jsonDecode(jsonStr));
+    } catch (e) {
+      return null;
+    }
+  }
+
+  Future<void> _loadSavedHotKeys() async {
+    HotKey? shotHotKey = await loadHotKey('shotHotKey');
+    if (shotHotKey != null) {
+      await _handleHotKeyRegister(shotHotKey);
+    }
+
+    HotKey? sendHotKey = await loadHotKey('sendHotKey');
+    if (sendHotKey != null) {
+      await _handleHotKeyRegisterSend(sendHotKey);
+    }
+  }
+
   Future<void> _handleHotKeyRegister(HotKey hotKey) async {
     await hotKeyManager.register(
       hotKey,
       keyDownHandler: _keyDownHandler,
     );
     setState(() {
-      _registeredHotKeyList = hotKeyManager.registeredHotKeyList;
+      _registeredHotKeyList = [...hotKeyManager.registeredHotKeyList];
     });
+    await saveHotKey('shotHotKey', hotKey);
+  }
+
+  Future<void> _handleHotKeyRegisterSend(HotKey hotKey) async {
+    await hotKeyManager.register(
+      hotKey,
+      keyDownHandler: _keyDownHandlerSend,
+    );
+    setState(() {
+      _registeredHotKeyList = [...hotKeyManager.registeredHotKeyList];
+    });
+    await saveHotKey('sendHotKey', hotKey);
   }
 
   void _changePage(String newPageName) {
     if (newPageName == 'screenshotPage') {
       hideWindow();
     }
+    else if (newPageName == 'settingsPage') {
+      showWindow();
+      hotKeyManager.unregisterAll();
+    }
+    else showWindow();
+    
 
     setState(() {
       pageName = newPageName;
     });
+
   }
 
   @override
@@ -144,18 +223,22 @@ class _MyAppState extends State<MyApp> with WindowListener {
           changePage: _changePage,
           shotsClient: shotsClient,
         );
+      case 'settingsPage':
+        return HomePage(
+          changePage: _changePage,
+          onScreenshotHotKeyRecorded: _handleHotKeyRegister,
+          onSendHotKeyRecorded: _handleHotKeyRegisterSend,
+          registeredHotKeyList: _registeredHotKeyList,
+          shotsClient: shotsClient,
+        );
       case 'screenshotPage':
+      default:
         return ScreenshotPage(
+          changePage: _changePage,
           screenshot: _screenshot,
           shotsClient: shotsClient,
           makeShot: makeShot,
-        );
-      case 'settingsPage':
-      default:
-        return HomePage(
-          changePage: _changePage,
-          onHotKeyRecorded: _handleHotKeyRegister,
-          shotsClient: shotsClient,
+          editorKey: editorKey,
         );
     }
   }

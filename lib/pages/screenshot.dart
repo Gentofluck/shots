@@ -21,9 +21,11 @@ import '../components/screenshot_editor.dart';
 class ScreenshotPage extends StatefulWidget {
 	final Uint8List? screenshot;
 	final ShotsClient shotsClient;
+  	final Function(String) changePage;
 	final VoidCallback makeShot;
+  	final GlobalKey<ScreenshotEditorState>? editorKey;
 
-	ScreenshotPage({this.screenshot, required this.shotsClient, required this.makeShot});
+	ScreenshotPage({this.screenshot, required this.shotsClient, required this.makeShot, required this.changePage, this.editorKey});
 
 	@override
 	_ScreenshotPageState createState() => _ScreenshotPageState();
@@ -53,6 +55,7 @@ class _ScreenshotPageState extends State<ScreenshotPage> with WindowListener {
 			onShowWindow: showWindow,
 			onHideWindow: hideWindow,
 			onMakeShot: widget.makeShot,
+			onOpenSettings: openSettings,
 		);
 		_systemTrayService.initTray();
 
@@ -117,6 +120,10 @@ class _ScreenshotPageState extends State<ScreenshotPage> with WindowListener {
 	Future<void> showWindow() async {
 		await windowManager.show();
 		await windowManager.setSkipTaskbar(false);
+	}
+
+	void openSettings() {
+		widget.changePage("settingsPage");
 	}
 
 
@@ -205,7 +212,8 @@ class _ScreenshotPageState extends State<ScreenshotPage> with WindowListener {
 							hideWindow: hideWindow,
 							brushSize: _brushSize,
 							isTextToolSelected: _isTextToolSelected,
-						),
+							key: widget.editorKey,
+					),
 			);
 	}
 

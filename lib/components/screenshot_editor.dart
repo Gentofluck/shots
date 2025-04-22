@@ -38,11 +38,11 @@ class ScreenshotEditor extends StatefulWidget {
 	});
 
 	@override
-	State<ScreenshotEditor> createState() => _ScreenshotEditorState();
+	State<ScreenshotEditor> createState() => ScreenshotEditorState();
 }
 
 
-class _ScreenshotEditorState extends State<ScreenshotEditor> {
+class ScreenshotEditorState extends State<ScreenshotEditor> {
 	final GlobalKey _imageKey = GlobalKey();
 	Offset _cursorPosition = Offset.zero;
 	Offset _textPosition = Offset.zero;
@@ -87,7 +87,7 @@ class _ScreenshotEditorState extends State<ScreenshotEditor> {
 		}
 	}
 
-		Future<Uint8List> _combineImages(Uint8List screenshot, Uint8List drawingImage) async {
+	Future<Uint8List> _combineImages(Uint8List screenshot, Uint8List drawingImage) async {
 		final screenshotImage = await decodeImageFromList(screenshot);
 		final drawingImageData = await decodeImageFromList(drawingImage);
 
@@ -113,7 +113,7 @@ class _ScreenshotEditorState extends State<ScreenshotEditor> {
 
 		final img = await decodeImageFromList(widget.screenshot!);
 		final actualSize = Size(img.width.toDouble(), img.height.toDouble());
-
+  
 		final renderBox = _imageKey.currentContext?.findRenderObject() as RenderBox?;
 		if (renderBox == null) return;
 		final displayedSize = renderBox.size;
@@ -197,6 +197,9 @@ class _ScreenshotEditorState extends State<ScreenshotEditor> {
 								setState(() {
 									_isShiftPressed = true;	
 								});
+							}else if (event.logicalKey == LogicalKeyboardKey.escape) {
+								widget.setIsUploaded(false);
+								widget.hideWindow();
 							}
 						} else if (event.runtimeType == RawKeyUpEvent) {
 							if (event.logicalKey == LogicalKeyboardKey.shiftLeft || event.logicalKey == LogicalKeyboardKey.shiftRight) {

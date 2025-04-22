@@ -4,110 +4,202 @@ import 'package:hotkey_manager/hotkey_manager.dart';
 import '../api/client.dart';
 
 class HomePage extends StatefulWidget {
-	final ValueChanged<HotKey> onHotKeyRecorded;
-	final Function(String) changePage;
-	final ShotsClient shotsClient;
+  final ValueChanged<HotKey> onScreenshotHotKeyRecorded;
+  final ValueChanged<HotKey> onSendHotKeyRecorded;
+  final Function(String) changePage;
+  final ShotsClient shotsClient;
+	final List<HotKey> registeredHotKeyList;
 
-	HomePage({
-		required this.changePage,
-		required this.onHotKeyRecorded,
-		required this.shotsClient,
-		super.key,
-	});
+  HomePage({
+    required this.changePage,
+    required this.onScreenshotHotKeyRecorded,
+    required this.onSendHotKeyRecorded,
+    required this.shotsClient,
+		required this.registeredHotKeyList,
+    super.key,
+  });
 
-	@override
-	_HomePageState createState() => _HomePageState();
+  @override
+  _HomePageState createState() => _HomePageState();
 }
 
 class _HomePageState extends State<HomePage> {
-	HotKey? _hotKey;
+  HotKey? _screenshotHotKey;
+  HotKey? _sendHotKey;
+  bool _isRecordingScreenshot = false;
+  bool _isRecordingSend = false;
 
 	@override
-	Widget build(BuildContext context) {
-		return Container(
-			decoration: BoxDecoration(color: Color(0xFFF3EFEF)),
-			child: Center(
-				child: Container(
-					width: 400,
-					padding: EdgeInsets.all(20),
-					margin: EdgeInsets.symmetric(horizontal: 30),
-					decoration: BoxDecoration(
-						color: Colors.white,
-						borderRadius: BorderRadius.circular(15),
-						boxShadow: [
-							BoxShadow(color: Colors.black26, blurRadius: 10, spreadRadius: 2),
-						],
-					),
-					child: Column(
-						mainAxisSize: MainAxisSize.min,
-						children: [
-							SvgPicture.asset(
-								'assets/icon.svg',
-								height: 80,
-								width: 80,
-							),
-							SizedBox(height: 20),
-							GestureDetector(
-								child: Container(
-									height: 75,
-									child: Column(
-										crossAxisAlignment: CrossAxisAlignment.center,
-										children: [
-											SizedBox(height: 15),
-											Text(
-												"Выберите сочетание клавиш",
-												style: TextStyle(
-													fontSize: 16,
-													color: Colors.black54,
-													decoration: TextDecoration.none,
-												),
-											),
-											SizedBox(height: 10),
-											DefaultTextStyle(
-												style: TextStyle(decoration: TextDecoration.none),
-												child: HotKeyRecorder(
-													onHotKeyRecorded: (hotKey) {
-													setState(() {
-														_hotKey = hotKey;
-													});
-													},
-												),
-											),
-										],
-									),
-								),
-							),
-							SizedBox(height: 10),
-							Align(
-								alignment: Alignment.bottomCenter,
-								child: Padding(
-									padding: EdgeInsets.all(10),
-									child: ElevatedButton(
-										style: ElevatedButton.styleFrom(
-											backgroundColor: Color(0xFF4AA37C),
-											foregroundColor: Colors.white,
-											shape: RoundedRectangleBorder(
-												borderRadius: BorderRadius.circular(10),
-											),
-											padding: EdgeInsets.symmetric(vertical: 14, horizontal: 32),
-										),
-										onPressed: () {
-											if (_hotKey != null) {
-												widget.onHotKeyRecorded(_hotKey!);
-												widget.changePage("screenshotPage");
-											}
-										},
-										child: Text(
-											"Сохранить настройки",
-											style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-										),
-									),
-								),
-							),
-						],
-					),
-				),
-			),
-		);
+  void initState() {
+		super.initState(); 
+		setState(() {
+		  _screenshotHotKey = (widget.registeredHotKeyList.isNotEmpty ? widget.registeredHotKeyList.first : null);
+			_sendHotKey = (widget.registeredHotKeyList.length > 0 ? widget.registeredHotKeyList[1] : null);
+		});
+  }
+
+	@override
+	void didUpdateWidget(covariant HomePage oldWidget) {
+		setState(() {
+		  _screenshotHotKey = (widget.registeredHotKeyList.isNotEmpty ? widget.registeredHotKeyList.first : null);
+			_sendHotKey = (widget.registeredHotKeyList.length > 1 ? widget.registeredHotKeyList[1] : null);
+		});
 	}
+	
+
+  void _startRecordingScreenshot() {
+    setState(() {
+      _isRecordingScreenshot = true;
+      _isRecordingSend = false;
+    });
+  }
+
+  void _startRecordingSend() {
+    setState(() {
+      _isRecordingScreenshot = false;
+      _isRecordingSend = true;
+    });
+  }
+
+  Widget _buildHotKeySection({
+    required String title,
+    required HotKey? currentKey,
+    required VoidCallback onStartRecording,
+    required bool isRecording,
+    required ValueChanged<HotKey> onKeyRecorded,
+  }) {
+    return GestureDetector(
+      onTap: onStartRecording,
+      child: Container(
+        height: 75,
+		    width: 300,
+        decoration: BoxDecoration(
+          color: isRecording ? Colors.grey[200] : null,
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            SizedBox(height: 15),
+            Text(
+              title,
+              style: TextStyle(
+                fontSize: 16,
+                color: Colors.black54,
+                decoration: TextDecoration.none,
+              ),
+            ),
+            SizedBox(height: 10),
+            if (isRecording)
+              DefaultTextStyle(
+                style: TextStyle(decoration: TextDecoration.none),
+                child: HotKeyRecorder(
+                  onHotKeyRecorded: (hotKey) {
+                    onKeyRecorded(hotKey);
+                    /*setState(() {
+                      _isRecordingScreenshot = false;
+                      _isRecordingSend = false;
+                    });*/
+                  },
+                ),
+              )
+            else if (currentKey != null)
+							DefaultTextStyle(
+								style: TextStyle(decoration: TextDecoration.none),
+								child: HotKeyVirtualView(hotKey: currentKey)
+							)
+            else
+							DefaultTextStyle(
+								style: TextStyle(decoration: TextDecoration.none),
+								child: Text(
+									"Нажмите чтобы записать",
+									style: TextStyle(fontSize: 12, color: Colors.grey),
+								),
+							)
+          ],
+        ),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: BoxDecoration(color: Color(0xFFF3EFEF)),
+      child: Center(
+        child: Container(
+          width: 400,
+          padding: EdgeInsets.all(20),
+          margin: EdgeInsets.symmetric(horizontal: 30),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(15),
+            boxShadow: [
+              BoxShadow(color: Colors.black26, blurRadius: 10, spreadRadius: 2),
+            ],
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              SvgPicture.asset(
+                'assets/icon.svg',
+                height: 80,
+                width: 80,
+              ),
+              SizedBox(height: 20),
+              
+              _buildHotKeySection(
+                title: "Создание скриншота",
+								currentKey: _screenshotHotKey,
+                onStartRecording: _startRecordingScreenshot,
+                isRecording: _isRecordingScreenshot,
+                onKeyRecorded: (hotKey) {
+                  setState(() => _screenshotHotKey = hotKey);
+                },
+              ),
+              
+              _buildHotKeySection(
+                title: "Отправка скриншота",
+								currentKey: _sendHotKey,
+                onStartRecording: _startRecordingSend,
+                isRecording: _isRecordingSend,
+                onKeyRecorded: (hotKey) {
+                  setState(() => _sendHotKey = hotKey);
+                },
+              ),
+              
+              SizedBox(height: 10),
+              Align(
+                alignment: Alignment.bottomCenter,
+                child: Padding(
+                  padding: EdgeInsets.all(10),
+                  child: ElevatedButton(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Color(0xFF4AA37C),
+                      foregroundColor: Colors.white,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      padding: EdgeInsets.symmetric(vertical: 14, horizontal: 32),
+                    ),
+                    onPressed: () {
+                      if (_screenshotHotKey != null && _sendHotKey != null) {
+                        widget.onScreenshotHotKeyRecorded(_screenshotHotKey!);
+                        widget.onSendHotKeyRecorded(_sendHotKey!);
+                        widget.changePage("screenshotPage");
+                      }
+                    },
+                    child: Text(
+                      "Сохранить настройки",
+                      style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
 }

@@ -12,11 +12,13 @@ class SystemTrayService {
 	final VoidCallback onShowWindow;
 	final VoidCallback onHideWindow;
 	final VoidCallback onMakeShot;
+	final VoidCallback onOpenSettings;
 
 	SystemTrayService({
 		required this.onShowWindow,
 		required this.onHideWindow,
 		required this.onMakeShot,
+		required this.onOpenSettings,
 	});
 
 	String _getTrayImagePath(String imageName) {
@@ -29,7 +31,7 @@ class SystemTrayService {
 
 	Future<void> initTray() async {
 		await _systemTray.initSystemTray(iconPath: _getTrayImagePath('app_icon'));
-		_systemTray.setTitle("shoots");
+		_systemTray.setTitle("shots");
 
 		_systemTray.registerSystemTrayEventHandler((eventName) {
 			if (eventName == kSystemTrayEventClick) {
@@ -44,6 +46,10 @@ class SystemTrayService {
 				label: 'Сделать шот',
 				//image: _getImagePath('darts_icon'),
 				onClicked: (menuItem) => onMakeShot(),
+			),
+			MenuItemLabel(
+				label: 'Настройки',
+				onClicked: (menuItem) => onOpenSettings(),
 			),
 			MenuSeparator(),
 			MenuItemLabel(

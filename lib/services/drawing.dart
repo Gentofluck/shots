@@ -265,16 +265,16 @@ class DrawingService {
 			..strokeCap = StrokeCap.round
 			..style = isFill ? PaintingStyle.fill : PaintingStyle.stroke;
 
-		double shadowOffset = sqrt(strokeWidth);
+		double shadowOffset = pow(strokeWidth, 0.3) as double;
 
 
 		final shadowPath = path.shift(Offset(shadowOffset, shadowOffset));  
 		canvas.drawPath(shadowPath, shadowPaint);
 
 		
-		for (int i = 1; i <= 4; i++) {
+		for (int i = 1; i <= 8; i++) {
    			final blurredShadowPath = shadowPath.shift(Offset(i * shadowOffset / 5, i * shadowOffset / 5));			
-			shadowPaint.color = Colors.black.withOpacity(0.1 + i * 0.05);
+			shadowPaint.color = Colors.black.withOpacity(0.2 - i * 0.02);
 			canvas.drawPath(blurredShadowPath, shadowPaint);
 		}
 
