@@ -120,6 +120,7 @@ class _MyAppState extends State<MyApp> with WindowListener {
 
 	Future<void> makeShot() async {
 		Uint8List? screenshot = await ScreenshotService.captureScreen();
+    print(screenshot);
 		if (screenshot != null && screenshot.isNotEmpty) {
 			await showWindow();
 			setState(() {
