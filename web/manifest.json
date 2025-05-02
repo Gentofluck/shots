@@ -1,6 +1,6 @@
 {
-    "name": "flutter_shots",
-    "short_name": "flutter_shots",
+    "name": "shots",
+    "short_name": "shots",
     "start_url": ".",
     "display": "standalone",
     "background_color": "#0175C2",

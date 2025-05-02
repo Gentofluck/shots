@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:hotkey_manager/hotkey_manager.dart';
-import '../api/client.dart';
+import '../services/api/client.dart';
 
 class HomePage extends StatefulWidget {
   final ValueChanged<HotKey> onScreenshotHotKeyRecorded;
@@ -72,7 +72,7 @@ class _HomePageState extends State<HomePage> {
       onTap: onStartRecording,
       child: Container(
         height: 75,
-		    width: 300,
+		    width: 228,
         decoration: BoxDecoration(
           color: isRecording ? Colors.grey[200] : null,
           borderRadius: BorderRadius.circular(8),
@@ -84,9 +84,11 @@ class _HomePageState extends State<HomePage> {
             Text(
               title,
               style: TextStyle(
-                fontSize: 16,
-                color: Colors.black54,
+                fontFamily: 'IBMPlexMono',
+                fontWeight: FontWeight.w500,
+                fontSize: 14,
                 decoration: TextDecoration.none,
+                color: Colors.black
               ),
             ),
             SizedBox(height: 10),
@@ -113,7 +115,12 @@ class _HomePageState extends State<HomePage> {
 								style: TextStyle(decoration: TextDecoration.none),
 								child: Text(
 									"Нажмите чтобы записать",
-									style: TextStyle(fontSize: 12, color: Colors.grey),
+									style: TextStyle(
+                    fontFamily: 'IBMPlexMono',
+                    fontWeight: FontWeight.w500,
+                    fontSize: 12, 
+                    color: Colors.grey
+                  ),
 								),
 							)
           ],
@@ -128,9 +135,8 @@ class _HomePageState extends State<HomePage> {
       decoration: BoxDecoration(color: Color(0xFFF3EFEF)),
       child: Center(
         child: Container(
-          width: 400,
+          width: 300,
           padding: EdgeInsets.all(20),
-          margin: EdgeInsets.symmetric(horizontal: 30),
           decoration: BoxDecoration(
             color: Colors.white,
             borderRadius: BorderRadius.circular(15),
@@ -141,13 +147,6 @@ class _HomePageState extends State<HomePage> {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              SvgPicture.asset(
-                'assets/icon.svg',
-                height: 80,
-                width: 80,
-              ),
-              SizedBox(height: 20),
-              
               _buildHotKeySection(
                 title: "Создание скриншота",
 								currentKey: _screenshotHotKey,
@@ -157,7 +156,7 @@ class _HomePageState extends State<HomePage> {
                   setState(() => _screenshotHotKey = hotKey);
                 },
               ),
-              
+              SizedBox(height: 10),
               _buildHotKeySection(
                 title: "Отправка скриншота",
 								currentKey: _sendHotKey,
@@ -174,13 +173,13 @@ class _HomePageState extends State<HomePage> {
                 child: Padding(
                   padding: EdgeInsets.all(10),
                   child: ElevatedButton(
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Color(0xFF4AA37C),
-                      foregroundColor: Colors.white,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      padding: EdgeInsets.symmetric(vertical: 14, horizontal: 32),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Color(0xFF425AD0),
+                        foregroundColor: Colors.white,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                        padding: EdgeInsets.symmetric(vertical: 14, horizontal: 32),
                     ),
                     onPressed: () {
                       if (_screenshotHotKey != null && _sendHotKey != null) {
@@ -191,7 +190,11 @@ class _HomePageState extends State<HomePage> {
                     },
                     child: Text(
                       "Сохранить настройки",
-                      style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                      style: TextStyle(
+                        fontFamily: 'IBMPlexMono',
+												fontWeight: FontWeight.w500,
+												fontSize: 14,
+                      ),
                     ),
                   ),
                 ),

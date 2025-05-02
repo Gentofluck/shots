@@ -30,8 +30,8 @@ class SystemTrayService {
 	}
 
 	Future<void> initTray() async {
-		await _systemTray.initSystemTray(iconPath: _getTrayImagePath('app_icon'));
-		_systemTray.setTitle("shots");
+		await _systemTray.initSystemTray(iconPath: _getTrayImagePath('app_icon_white'));
+		_systemTray.setTitle("");
 
 		_systemTray.registerSystemTrayEventHandler((eventName) {
 			if (eventName == kSystemTrayEventClick) {

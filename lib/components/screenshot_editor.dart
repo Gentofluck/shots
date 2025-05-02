@@ -11,7 +11,7 @@ import 'package:system_tray/system_tray.dart';
 import '../services/drawable_entities.dart';
 import '../services/drawing.dart';
 import '../components/cursor_painter.dart';
-import '../api/client.dart';
+import '../services/api/client.dart';
 
 
 
@@ -22,7 +22,7 @@ class ScreenshotEditor extends StatefulWidget {
   	final Future<void> Function() hideWindow;	
   	final DrawingService drawingService;
 	final ShotsClient shotsClient;
-	final double brushSize;
+	final int brushSize;
 	final bool isTextToolSelected;
 
 	const ScreenshotEditor({
@@ -51,6 +51,7 @@ class ScreenshotEditorState extends State<ScreenshotEditor> {
 	FocusNode _textFocusNode = FocusNode();
 	double _imageWidth = 0.0;
 	double _imageHeight = 0.0;
+	double _textSize = 10.0;
 	bool _isShiftPressed = false;
 
 	@override
@@ -141,6 +142,7 @@ class ScreenshotEditorState extends State<ScreenshotEditor> {
 	}
 
 	Widget _buildInvisibleTextInput() {
+		double fontSize = (_textSize);
 		return Positioned(
 			left: _textPosition.dx,
 			top: _textPosition.dy,
@@ -153,7 +155,7 @@ class ScreenshotEditorState extends State<ScreenshotEditor> {
 							controller: _textController,
 							focusNode: _textFocusNode,
 							style: TextStyle(
-								fontSize: widget.brushSize,
+								fontSize: fontSize,
 								color: Colors.transparent,
 								letterSpacing: 0,
 								height: 1.18,
@@ -192,22 +194,41 @@ class ScreenshotEditorState extends State<ScreenshotEditor> {
 				body: RawKeyboardListener(
 					focusNode: _rawKeyboardFocusNode,
 					onKey: (event) {
-						if (event.runtimeType == RawKeyDownEvent) {
-							if (event.logicalKey == LogicalKeyboardKey.shiftLeft || event.logicalKey == LogicalKeyboardKey.shiftRight) {
+						if (event is RawKeyDownEvent) {
+							final isCtrlOrCmdPressed = event.isControlPressed || event.isMetaPressed;
+							final isShiftPressed = event.isShiftPressed;
+
+							if (event.logicalKey == LogicalKeyboardKey.shiftLeft ||
+								event.logicalKey == LogicalKeyboardKey.shiftRight) {
 								setState(() {
-									_isShiftPressed = true;	
+									_isShiftPressed = true;
 								});
-							}else if (event.logicalKey == LogicalKeyboardKey.escape) {
+							} else if (event.logicalKey == LogicalKeyboardKey.escape) {
 								widget.setIsUploaded(false);
 								widget.hideWindow();
+								setState(() {});
+							} else if (isCtrlOrCmdPressed && event.logicalKey == LogicalKeyboardKey.keyZ) {
+								if (_textFocusNode.hasFocus) return;
+								if (isShiftPressed) {
+									print('redo');
+									widget.drawingService.redo(); 	
+								} else {
+									print('undo');
+									widget.drawingService.undo();	
+								}
+								setState(() {});
 							}
-						} else if (event.runtimeType == RawKeyUpEvent) {
-							if (event.logicalKey == LogicalKeyboardKey.shiftLeft || event.logicalKey == LogicalKeyboardKey.shiftRight) {
+						}
+						else if (event is RawKeyUpEvent) {
+							if (event.logicalKey == LogicalKeyboardKey.shiftLeft ||
+								event.logicalKey == LogicalKeyboardKey.shiftRight) {
 								setState(() {
-									_isShiftPressed = false;  
+									_isShiftPressed = false;
 								});
 							}
 						}
+
+
 					},
 					child: SingleChildScrollView(
 						scrollDirection: Axis.horizontal,
@@ -220,7 +241,7 @@ class ScreenshotEditorState extends State<ScreenshotEditor> {
 										if (widget.tool == 'text') {
 											TextStroke? textStroke = widget.drawingService.getTextByPoint(details.localPosition);
 
-											Offset start = details.localPosition;
+											Offset start = details.localPosition - Offset(0, (double.tryParse(widget.brushSize.toString()) ?? 15.0) * 5.0 / 2);
 											String currentText = '';
 											if (textStroke != null)
 											{
@@ -229,11 +250,15 @@ class ScreenshotEditorState extends State<ScreenshotEditor> {
 
 												widget.drawingService.createTextEditor(textStroke);
 												start = textStroke.start + textStroke.getTotalTranslation();
-												currentText = textStroke.text.last;
+												currentText = textStroke.currentText;
+												_textSize = textStroke.size;
+												print('textStroke: ${currentText}');
+												print(_textSize);
 											}
 											else
 											{
 												widget.drawingService.addPoint(start, widget.tool, false);
+												_textSize = widget.brushSize.toDouble() * 5.0;
 											}
 											_textController.text = currentText;
 											_textPosition = start;
@@ -294,7 +319,7 @@ class ScreenshotEditorState extends State<ScreenshotEditor> {
 														left: _cursorPosition.dx - widget.brushSize / 2,
 														top: _cursorPosition.dy - widget.brushSize / 2,
 														child: CustomPaint(
-															size: Size(widget.brushSize, widget.brushSize),
+															size: Size(widget.brushSize.toDouble(), widget.brushSize.toDouble()),
 															painter: CursorPainter(widget.drawingService.brushColor),
 														),
 													),
@@ -306,11 +331,6 @@ class ScreenshotEditorState extends State<ScreenshotEditor> {
 						),
 					),
 					
-				),
-				floatingActionButton: FloatingActionButton(
-					onPressed: uploadScreenshot,
-					backgroundColor: const Color(0xFF4AA37C),
-					child: const Icon(Icons.upload),
 				),
 			)
 		);

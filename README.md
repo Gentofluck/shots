@@ -1,4 +1,4 @@
-# flutter_shots
+# shots
 
 A new Flutter project.
 

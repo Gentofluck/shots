@@ -173,7 +173,28 @@ class StrokeChange extends DrawableEntity {
 		else if (property == 'eraser') stroke.redoVisible();
 	}
 }
-
 class ClearAll extends DrawableEntity {
-	ClearAll();
+	final List<DrawableStroke> _clearedStrokes;
+
+	ClearAll(List<DrawableEntity> strokes) : _clearedStrokes = [] {
+		for (final stroke in strokes) {
+			if (stroke is DrawableStroke) 
+			{
+				stroke.createInvisible();
+				_clearedStrokes.add(stroke);
+			}
+		}
+	}
+
+	void undo() {
+		for (final stroke in _clearedStrokes) {
+			stroke.undoVisible();
+		}
+	}
+
+	void redo() {
+		for (final stroke in _clearedStrokes) {
+			stroke.redoVisible();
+		}
+	}
 }

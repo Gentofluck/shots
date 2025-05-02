@@ -4,12 +4,10 @@
 
 list(APPEND FLUTTER_PLUGIN_LIST
   hotkey_manager_linux
-  pasteboard
   screen_capturer_linux
   screen_retriever_linux
   system_tray
   window_manager
-  window_size
 )
 
 list(APPEND FLUTTER_FFI_PLUGIN_LIST

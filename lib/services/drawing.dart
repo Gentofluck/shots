@@ -5,12 +5,12 @@ import 'dart:math';
 import 'drawable_entities.dart';
 
 class DrawingService {
-	List<DrawableEntity> _strokes = [];
-	List<DrawableEntity> _strokesRedo = [];
+	List<DrawableEntity> _drawingHistory = [];
+	List<DrawableEntity> _drawingHistoryRedo = [];
 	DrawableEntity? _currentStroke;  
 
 	Color _brushColor = Colors.black;  
-	double _brushSize = 0;  
+	int _brushSize = 0;  
 	bool _shadowEnabled = false;
 	bool _layerModifierEnabled = false;
 	Offset startTranslation = Offset(0, 0);
@@ -18,7 +18,7 @@ class DrawingService {
 	void setBrushColor(Color color) {
 		_brushColor = color;
 	}
-	void setBrushSize(double size) {
+	void setBrushSize(int size) {
 		_brushSize = size;
 	}
 	void setShadowEnabled(bool shadowEnabled){
@@ -29,7 +29,7 @@ class DrawingService {
 	}
 	
 	Color get brushColor => _brushColor;
-	double get brushSize => _brushSize;
+	int get brushSize => _brushSize;
 	DrawableEntity? get currentStroke => _currentStroke;
 
 
@@ -54,7 +54,7 @@ class DrawingService {
 			text: TextSpan(
 				text: text,
 				style: TextStyle(
-					fontSize: _brushSize,
+					fontSize: _brushSize.toDouble() * 5,
 					color: Colors.black, 
 				),
 			),
@@ -76,10 +76,11 @@ class DrawingService {
 			return stroke;
 		}
 
-		for (final entity in _strokes.reversed) {
+		for (final entity in _drawingHistory.reversed) {
 			stroke = extractTextStroke(entity, _layerModifierEnabled);
 
 			if (stroke != null && stroke.isVisible() && stroke.isPointInText(point)) {
+				
 				return stroke;
 			}
 		}
@@ -119,7 +120,7 @@ class DrawingService {
 			return stroke;
 		}
 
-		for (var entity in _strokes.reversed) {
+		for (var entity in _drawingHistory.reversed) {
 			stroke = extractDrawableStroke(entity);
 			if (stroke != null && stroke.isVisible() && isPointClose(stroke, point)) return stroke;
 		}
@@ -131,7 +132,7 @@ class DrawingService {
 	{
 		if (_currentStroke != null)				
 		{
-			_strokes.add(_currentStroke!);
+			_drawingHistory.add(_currentStroke!);
 			_currentStroke = null;
 		} 
 		_currentStroke = StrokeChange('text', textStroke);
@@ -146,19 +147,20 @@ class DrawingService {
 	void addPoint(Offset point, String tool, bool isShiftPressed) {
 		TextStroke? stroke = extractTextStroke(_currentStroke, true);
 
+		// Пояснить почему так
 		if (_currentStroke != null && 
 		((_currentStroke is TextStroke) && !(_currentStroke is TextNum)) ||
 		(tool!='text_num' && (_currentStroke is TextNum))
 		)				
 		{
-			_strokes.add(_currentStroke!);
+			_drawingHistory.add(_currentStroke!);
 			_currentStroke = null;
 		} 
 		
 		switch (tool)
 		{
 			case 'pen':
-				_currentStroke ??= Stroke([], _brushColor, _brushSize, _shadowEnabled);
+				_currentStroke ??= Stroke([], _brushColor, _brushSize.toDouble(), _shadowEnabled);
 				if (((_currentStroke as Stroke).points.length > 3) && isShiftPressed) 
 				{
 					(_currentStroke as Stroke).points.removeLast();
@@ -174,18 +176,19 @@ class DrawingService {
 				if(_currentStroke != null && _currentStroke is TextNum)
 				{
 					currentNum = int.parse((_currentStroke as TextNum).currentText);
-					_strokes.add(_currentStroke!);
+					_drawingHistory.add(_currentStroke!);
 				}
 				String afterNum = (currentNum + 1).toString();
-				_currentStroke = TextNum([afterNum], point, [getTextSize(afterNum)], _brushColor, _brushSize, _shadowEnabled);
-				_strokesRedo = [];
+				Offset textSize = getTextSize(afterNum);
+				_currentStroke = TextNum([afterNum], point - textSize / 2, [getTextSize(afterNum)], _brushColor, _brushSize.toDouble() * 5, _shadowEnabled);
+				_drawingHistoryRedo = [];
 				break;
 			case 'eraser':
 				DrawableStroke? stroke = getPathByPoint(point);
-				if (stroke != null) _strokes.add(StrokeChange('eraser', stroke!));
+				if (stroke != null) _drawingHistory.add(StrokeChange('eraser', stroke!));
 			case 'text':
-				_currentStroke = TextStroke([''], point, [point], _brushColor, _brushSize, _shadowEnabled);
-				_strokesRedo = [];
+				_currentStroke = TextStroke([''], point, [point], _brushColor, _brushSize.toDouble() * 5, _shadowEnabled);
+				_drawingHistoryRedo = [];
 				break;
 			case 'move':
 				if (_currentStroke != null && (_currentStroke is StrokeChange) && (_currentStroke as StrokeChange).property == 'position') {
@@ -201,18 +204,18 @@ class DrawingService {
 				}
 				break;
 			default:
-				if (_currentStroke != null) 
+				if (_currentStroke != null && (_currentStroke is FigureStroke)) 
 				{
 					if (isShiftPressed) {
 						double dx = point.dx - (_currentStroke as FigureStroke).start.dx;
 						double dy = point.dy - (_currentStroke as FigureStroke).start.dy;
 
 						double minDiff = dx.abs() < dy.abs() ? dx.abs() : dy.abs();
-						point = Offset((_currentStroke as FigureStroke).start.dx + minDiff, (_currentStroke as FigureStroke).start.dy + minDiff);
+						point = Offset((_currentStroke as FigureStroke).start.dx + minDiff * (dx < 0 ? -1 : 1), (_currentStroke as FigureStroke).start.dy + minDiff * (dy < 0 ? -1 : 1));
 					}
 					(_currentStroke as FigureStroke).end = point;
 				}
-				else _currentStroke = FigureStroke(point, null, _brushColor, _brushSize, tool, _shadowEnabled);
+				else _currentStroke = FigureStroke(point, null, _brushColor, _brushSize.toDouble(), tool, _shadowEnabled);
 		}
 	}
 
@@ -224,22 +227,22 @@ class DrawingService {
 			case 'pen':
 				if ((_currentStroke as Stroke).points.isNotEmpty) 
 				{
-					_strokes.add(Stroke(List.from((_currentStroke as Stroke).points), _brushColor, _brushSize, _shadowEnabled));
+					_drawingHistory.add(Stroke(List.from((_currentStroke as Stroke).points), _brushColor, _brushSize.toDouble(), _shadowEnabled));
 					_currentStroke = null;
-					_strokesRedo = [];
+					_drawingHistoryRedo = [];
 				}
 				break;
 			case 'move':
 				if (_currentStroke != null) {
-					_strokes.add(_currentStroke!);
-					_strokesRedo = [];
+					_drawingHistory.add(_currentStroke!);
+					_drawingHistoryRedo = [];
 				}
 				_currentStroke = null;
 				break;
 			default: 
-				_strokes.add(FigureStroke((_currentStroke as FigureStroke).start, (_currentStroke as FigureStroke).end, _brushColor, _brushSize, tool, _shadowEnabled));
+				_drawingHistory.add(FigureStroke((_currentStroke as FigureStroke).start, (_currentStroke as FigureStroke).end, _brushColor, _brushSize.toDouble(), tool, _shadowEnabled));
 				_currentStroke = null;
-				_strokesRedo = [];
+				_drawingHistoryRedo = [];
 		}
 	}
 
@@ -299,9 +302,9 @@ class DrawingService {
 			return paragraph;
 		}
 
-		for (int i = 0; i <= 3; i++) {
-			final opacity = 0.2 + i * 0.05;
-			final offset = Offset(i * shadowOffset / 2, i * shadowOffset / 2);
+		for (int i = 0; i <= 8; i++) {
+			final opacity = 0.2 - i * 0.02;
+			final offset = Offset(i * shadowOffset / 20, i * shadowOffset / 20);
 			final paragraph = buildParagraph(Colors.black.withOpacity(opacity.clamp(0.0, 1.0)));
 			canvas.drawParagraph(paragraph, basePos + offset);
 		}
@@ -313,7 +316,7 @@ class DrawingService {
 
 		double multiple = getArrowMultiple(totalLength, stroke.size);
 
-		double arrowHeadLength = stroke.size * multiple * 2;
+		double arrowHeadLength = stroke.size * multiple * 3;
 		double bodyWidth = stroke.size * multiple * 1; 
 
 		Offset tail = start;
@@ -324,12 +327,12 @@ class DrawingService {
 		);
 
 		Offset headLeft = Offset(
-			base.dx - bodyWidth * 0.5 * sin(angle),
-			base.dy + bodyWidth * 0.5 * cos(angle),
+			base.dx - bodyWidth * 0.4 * sin(angle),
+			base.dy + bodyWidth * 0.4 * cos(angle),
 		);
 		Offset headRight = Offset(
-			base.dx + bodyWidth * 0.5 * sin(angle),
-			base.dy - bodyWidth * 0.5 * cos(angle),
+			base.dx + bodyWidth * 0.4 * sin(angle),
+			base.dy - bodyWidth * 0.4 * cos(angle),
 		);
 
 		Offset bodyStart = Offset(
@@ -338,12 +341,12 @@ class DrawingService {
 		);
 
 		Offset tipLeft = Offset(
-			end.dx - 1.5 * arrowHeadLength * cos(angle - pi / 6),
-			end.dy - 1.5 * arrowHeadLength * sin(angle - pi / 6),
+			end.dx - 1.8 * arrowHeadLength * cos(angle - pi / 8),
+			end.dy - 1.8 * arrowHeadLength * sin(angle - pi / 8),
 		);
 		Offset tipRight = Offset(
-			end.dx - 1.5 * arrowHeadLength * cos(angle + pi / 6),
-			end.dy - 1.5 * arrowHeadLength * sin(angle + pi / 6),
+			end.dx - 1.8 * arrowHeadLength * cos(angle + pi / 8),
+			end.dy - 1.8 * arrowHeadLength * sin(angle + pi / 8),
 		);
 
 		path.moveTo(bodyStart.dx, bodyStart.dy); 
@@ -377,7 +380,7 @@ class DrawingService {
 				for (int i = 0; i < points.length - 2; i++) {
 					final p0 = points[i];
 					final p1 = points[i + 1];
-					final p2 = points[i + 2];
+					//final p2 = points[i + 2];
 					final controlPoint = Offset((p0.dx + p1.dx) / 2, (p0.dy + p1.dy) / 2);
 
 					path.quadraticBezierTo(p0.dx, p0.dy, controlPoint.dx, controlPoint.dy);
@@ -393,7 +396,7 @@ class DrawingService {
 				if (stroke.type == 'arrow') {
 					drawArrow(path, stroke, start, end);
 				}
-				else if (stroke.type == 'square') {
+				else if (stroke.type == 'square' || stroke.type == 'filled_square') {
 					double left = min(start.dx, end.dx);
 					double top = min(start.dy, end.dy);
 					double right = max(start.dx, end.dx);
@@ -417,7 +420,7 @@ class DrawingService {
 
 	List<DrawableStroke> getFilteredStrokes() {
 		List<DrawableEntity> unitedStrokes = [
-			..._strokes,
+			..._drawingHistory,
 			if (_currentStroke != null) _currentStroke as DrawableEntity
 		];
 
@@ -447,13 +450,13 @@ class DrawingService {
 	}
 
 	void removeLastEditing(lastStroke) {
-		if (lastStroke is StrokeChange) {
+		if (lastStroke is StrokeChange || lastStroke is ClearAll) {
 			lastStroke.undo();
 		}
 	}
 
 	void redoLastEditing(lastStroke) {
-		if (lastStroke is StrokeChange) {
+		if (lastStroke is StrokeChange || lastStroke is ClearAll) {
 			lastStroke.redo();
 		}
 	}
@@ -462,35 +465,35 @@ class DrawingService {
 		if (_currentStroke != null)
 		{
 			removeLastEditing(_currentStroke);
-			_strokesRedo.add(_currentStroke!);
+			_drawingHistoryRedo.add(_currentStroke!);
 			_currentStroke = null;
 		}
-		else if(_strokes.isNotEmpty)
+		else if(_drawingHistory.isNotEmpty)
 		{
-			removeLastEditing(_strokes.last);
-			_strokesRedo.add(_strokes.last!);
-			_strokes.removeLast();
+			removeLastEditing(_drawingHistory.last);
+			_drawingHistoryRedo.add(_drawingHistory.last!);
+			_drawingHistory.removeLast();
 		}
 	}
 
 	void redo() {
-		if (_strokesRedo != null && _strokesRedo.length > 0)
+		if (_drawingHistoryRedo != null && _drawingHistoryRedo.length > 0)
 		{
-			redoLastEditing(_strokesRedo.last);
-			_strokes.add(_strokesRedo.last);
-			_strokesRedo.removeLast();
+			redoLastEditing(_drawingHistoryRedo.last);
+			_drawingHistory.add(_drawingHistoryRedo.last);
+			_drawingHistoryRedo.removeLast();
 		}
 	}
 
 	void clear() {
-		if (_currentStroke != null) _strokes.add(_currentStroke!);
-		_strokes.add(ClearAll());
-		_strokesRedo = [];
+		if (_currentStroke != null) _drawingHistory.add(_currentStroke!);
+		_drawingHistory.add(ClearAll(_drawingHistory));
+		_drawingHistoryRedo = [];
 		_currentStroke = null;
 	}
 
 	void clearCanvas() {
-		_strokes.clear();
+		_drawingHistory.clear();
 		_currentStroke = null;
 	}
 	
@@ -530,7 +533,7 @@ class DrawingService {
 				paint.strokeWidth = stroke.size;
 				Path path = getPath(stroke);
 
-				if ((stroke is FigureStroke) && stroke.type == 'arrow') {
+				if ((stroke is FigureStroke) && (stroke.type == 'arrow' || stroke.type == 'filled_square')) {
 					paint.style = PaintingStyle.fill;
 				}
 				else 
@@ -540,7 +543,7 @@ class DrawingService {
 				
 				if (stroke.shadowEnabled) {
 					if (stroke is FigureStroke)
-						drawShadow(canvas, path, paint, (stroke as FigureStroke).type == 'arrow');
+						drawShadow(canvas, path, paint, (stroke as FigureStroke).type == 'arrow' || (stroke as FigureStroke).type == 'filled_square');
 					else 
 						drawShadow(canvas, path, paint, false);
 				}
@@ -598,7 +601,7 @@ class DrawingPainter extends CustomPainter {
 				paint.strokeWidth = stroke.size;
 				Path path = drawingService.getPath(stroke);
 
-				if ((stroke is FigureStroke) && stroke.type == 'arrow') {
+				if ((stroke is FigureStroke) && (stroke.type == 'arrow' || stroke.type == 'filled_square')) {
 					paint.style = PaintingStyle.fill;
 				}
 				else 
@@ -608,7 +611,7 @@ class DrawingPainter extends CustomPainter {
 				
 				if (stroke.shadowEnabled) {
 					if (stroke is FigureStroke)
-						drawingService.drawShadow(canvas, path, paint, (stroke as FigureStroke).type == 'arrow');
+						drawingService.drawShadow(canvas, path, paint, (stroke as FigureStroke).type == 'arrow' || (stroke as FigureStroke).type == 'filled_square');
 					else 
 						drawingService.drawShadow(canvas, path, paint, false);
 				}

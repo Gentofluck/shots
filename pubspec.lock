@@ -184,22 +184,6 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "4.1.2"
-  intl:
-    dependency: "direct main"
-    description:
-      name: intl
-      sha256: "3df61194eb431efc39c4ceba583b95633a403f46c9fd341e550ce0bfa50e9aa5"
-      url: "https://pub.dev"
-    source: hosted
-    version: "0.20.2"
-  js:
-    dependency: transitive
-    description:
-      name: js
-      sha256: f2c445dce49627136094980615a031419f7f3eb393237e4ecd97ac15dea343f3
-      url: "https://pub.dev"
-    source: hosted
-    version: "0.6.7"
   json_annotation:
     dependency: transitive
     description:
@@ -264,14 +248,6 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "1.16.0"
-  pasteboard:
-    dependency: "direct main"
-    description:
-      name: pasteboard
-      sha256: "1c8b6a8b3f1d12e55d4e9404433cda1b4abe66db6b17bc2d2fb5965772c04674"
-      url: "https://pub.dev"
-    source: hosted
-    version: "0.2.0"
   path:
     dependency: transitive
     description:
@@ -648,14 +624,6 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "0.4.3"
-  window_size:
-    dependency: "direct main"
-    description:
-      name: window_size
-      sha256: "8ba77a3df7bd686e60b21e699e60e1b103e6515950954b46c4fb6f513586e278"
-      url: "https://pub.dev"
-    source: hosted
-    version: "0.1.0"
   xdg_directories:
     dependency: transitive
     description:

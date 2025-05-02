@@ -8,7 +8,7 @@ import 'package:flutter/services.dart';
 import 'package:window_manager/window_manager.dart';
 import 'package:system_tray/system_tray.dart';
 
-import '../api/client.dart';
+import '../services/api/client.dart';
 import '../services/drawing.dart';
 import '../services/drawable_entities.dart';
 import '../services/system_tray.dart';
@@ -34,12 +34,15 @@ class ScreenshotPage extends StatefulWidget {
 class _ScreenshotPageState extends State<ScreenshotPage> with WindowListener {
 	late final SystemTrayService _systemTrayService;
 	
+	final double _toolbarHeight = 38;
+
 	bool _toogleMenu = true;
 	bool _isUploaded = false;
 	String _tool = 'pen';
 	bool _shadowEnabled = false;
+	Color _toolColor = Colors.black;
 	bool _layerModifierEnabled = false;
-	double _brushSize = 10.0;
+	int _brushSize = 10;
 	final DrawingService _drawingService = DrawingService();
 	final TextEditingController _brushSizeController = TextEditingController();
 	bool _isTextToolSelected = false;
@@ -76,8 +79,7 @@ class _ScreenshotPageState extends State<ScreenshotPage> with WindowListener {
 			final width = image.width.toDouble() / devicePixelRatio;
 			final height = image.height.toDouble() / devicePixelRatio;
 			
-			const toolbarHeight = 84.0; 
-			await windowManager.setSize(Size(width, height + toolbarHeight));
+			await windowManager.setSize(Size(width, height + _toolbarHeight + 28));
 			
 			await windowManager.center();
 			
@@ -92,7 +94,6 @@ class _ScreenshotPageState extends State<ScreenshotPage> with WindowListener {
 		windowManager.removeListener(this);
 		super.dispose();
 	}
-
 
 	@override
 	void didUpdateWidget(covariant ScreenshotPage oldWidget) {
@@ -128,8 +129,9 @@ class _ScreenshotPageState extends State<ScreenshotPage> with WindowListener {
 
 
 	void _updateBrushSize(String value) {
-		double newSize = double.tryParse(value) ?? 5.0;
-		if (newSize >= 1.0 && newSize <= 100.0) {
+		
+		int newSize = value == "первый" ? 1 : (int.tryParse(value) ?? 15);
+		if (newSize >= 1 && newSize <= 100) {
 			setState(() {
 				_brushSize = newSize;
 				_drawingService.setBrushSize(_brushSize);  
@@ -144,7 +146,8 @@ class _ScreenshotPageState extends State<ScreenshotPage> with WindowListener {
 				initialColor: _drawingService.brushColor,
 				onColorChanged: (color) {
 					setState(() {
-					_drawingService.setBrushColor(color);
+						_toolColor = color;
+						_drawingService.setBrushColor(color);
 					});
 				},
 			),
@@ -156,9 +159,10 @@ class _ScreenshotPageState extends State<ScreenshotPage> with WindowListener {
 		return 
 			Scaffold(
 				appBar: AppBar(
-					title: const Text(''),
+					toolbarHeight: _toolbarHeight,
 					actions: [
 						ScreenshotToolbar(
+							brushSize: _brushSize,
 							brushSizeController: _brushSizeController,
 							onBrushSizeChanged: _updateBrushSize,
 							toggleShadow: () {
@@ -181,10 +185,13 @@ class _ScreenshotPageState extends State<ScreenshotPage> with WindowListener {
 									_isTextToolSelected = tool == 'text';
 								});
 							},
+							tool: _tool,
+							color: _toolColor,
 							undo: () => setState(() => _drawingService.undo()),
 							redo: () => setState(() => _drawingService.redo()),
 							clear: () => setState(() => _drawingService.clear()),
 							showColorPicker: () => _showColorPicker(context),
+							uploadScreenshot: widget.editorKey?.currentState?.uploadScreenshot ?? (() async {}),
 						),
 					],
 				),
