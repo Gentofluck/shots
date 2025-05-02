@@ -158,6 +158,7 @@ class ScreenshotEditorState extends State<ScreenshotEditor> {
 								fontSize: fontSize,
 								color: Colors.transparent,
 								letterSpacing: 0,
+								//1.35 windows
 								height: 1.18,
 							),
 							textInputAction: TextInputAction.newline,
