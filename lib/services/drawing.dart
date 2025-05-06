@@ -87,12 +87,30 @@ class DrawingService {
 
 		return null;
 	}
+	
 
 	bool isPointClose (DrawableStroke stroke, Offset point) {
-		if (stroke is TextStroke && stroke.isVisible()) {
+		if (!stroke.isVisible()) return false;
+		if (stroke is TextStroke ) {
 			if (stroke.isPointInText(point)) return true;
 		}
-		else if (stroke is DrawableStroke && stroke.isVisible()) {
+		else if (stroke is FigureStroke && stroke.type == 'filled_square') {
+			if (stroke.end == null) return false;
+
+			final totalTranslation = stroke.getTotalTranslation();
+  			final adjustedPoint = point - totalTranslation;
+    
+			final start = stroke.start;
+			final end = stroke.end!;
+			final left = min(start.dx, end.dx);
+			final top = min(start.dy, end.dy);
+			final right = max(start.dx, end.dx);
+			final bottom = max(start.dy, end.dy);
+			
+			return adjustedPoint.dx >= left && adjustedPoint.dx <= right &&
+				adjustedPoint.dy >= top && adjustedPoint.dy <= bottom;
+		}
+		else if (stroke is DrawableStroke) {
 			Path path = getPath(stroke);
 
 			if (path != null) {
@@ -494,6 +512,7 @@ class DrawingService {
 
 	void clearCanvas() {
 		_drawingHistory.clear();
+		_drawingHistoryRedo.clear();
 		_currentStroke = null;
 	}
 	
@@ -556,8 +575,6 @@ class DrawingService {
 		final img = await picture.toImage(size.width.toInt(), size.height.toInt());
 
 		final byteData = await img.toByteData(format: ui.ImageByteFormat.png);
-
-		clearCanvas();
 
 		return byteData!.buffer.asUint8List();
  	}

@@ -100,6 +100,7 @@ class _ScreenshotPageState extends State<ScreenshotPage> with WindowListener {
 		super.didUpdateWidget(oldWidget);
 
 		if (widget.screenshot != oldWidget.screenshot) {
+			_drawingService.clearCanvas();
 			_setWindowSizeToImageSize(widget.screenshot!);
 			setIsUploaded(false);
 		}
