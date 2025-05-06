@@ -31,7 +31,7 @@ namespace screen_capturer_windows {
 		return TRUE;
 	}
 
-	LRESULT CALLBACK OverlayProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam) {      
+	/*LRESULT CALLBACK OverlayProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam) {      
 		SetCursor(LoadCursor(NULL, IDC_CROSS));
 
 		switch (message) {
@@ -96,8 +96,89 @@ namespace screen_capturer_windows {
 				
 		}
 		return DefWindowProc(hwnd, message, wParam, lParam);
+	}*/
+	LRESULT CALLBACK OverlayProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam) {      
+		SetCursor(LoadCursor(NULL, IDC_CROSS));
+	
+		switch (message) {
+			case WM_LBUTTONDOWN:
+				selecting = true;
+				startPoint.x = LOWORD(lParam);
+				startPoint.y = HIWORD(lParam);
+				endPoint = startPoint;
+				return 0;
+				
+			case WM_KEYDOWN:
+				if (wParam == VK_ESCAPE) {
+					// ESC pressed - cancel selection
+					selecting = false;
+					startPoint.x = 0;
+					startPoint.y = 0;
+					endPoint.x = 0;
+					endPoint.y = 0;
+					DestroyWindow(hwnd);
+				}
+				return 0;
+				
+			case WM_MOUSEMOVE:
+				if (selecting) {
+					endPoint.x = LOWORD(lParam);
+					endPoint.y = HIWORD(lParam);
+	
+					if (startPoint.x != endPoint.x || startPoint.y != endPoint.y) {
+						needsRedraw = true;
+					}
+	
+					if (needsRedraw) {
+						InvalidateRect(hwnd, NULL, TRUE);
+						needsRedraw = false;
+					}
+				}
+				return 0;
+				
+			case WM_LBUTTONUP:
+				selecting = false;
+				DestroyWindow(hwnd);
+				return 0;
+				
+			case WM_PAINT: {
+				PAINTSTRUCT ps;
+				HDC hdc = BeginPaint(hwnd, &ps);
+			
+				RECT rect;
+				GetClientRect(hwnd, &rect);
+				int width = rect.right - rect.left;
+				int height = rect.bottom - rect.top;
+			
+				HDC hdcMem = CreateCompatibleDC(hdc);
+				HBITMAP hBitmap = CreateCompatibleBitmap(hdc, width, height);
+				HGDIOBJ oldBmp = SelectObject(hdcMem, hBitmap);
+			
+				HBRUSH fillBrush = CreateSolidBrush(RGB(0, 0, 0));
+				RECT fillRect = {startPoint.x, startPoint.y, endPoint.x, endPoint.y};
+				FillRect(hdcMem, &fillRect, fillBrush); 
+			
+				HPEN borderPen = CreatePen(PS_SOLID, 2, RGB(255, 255, 255));  
+				SelectObject(hdcMem, borderPen);
+			
+				Rectangle(hdcMem, startPoint.x, startPoint.y, endPoint.x, endPoint.y);
+			
+				BitBlt(hdc, 0, 0, width, height, hdcMem, 0, 0, SRCCOPY);
+			
+				DeleteObject(fillBrush);
+				DeleteObject(borderPen);
+				SelectObject(hdcMem, oldBmp);
+				DeleteDC(hdcMem);
+				DeleteObject(hBitmap);
+			
+				EndPaint(hwnd, &ps);
+				return 0;
+			}
+		}
+		return DefWindowProc(hwnd, message, wParam, lParam);
 	}
 
+	/*
 	RECT ShowSelectionOverlay() {
 		EnumDisplayMonitors(NULL, NULL, MonitorEnumProc, 0);
 
@@ -144,6 +225,60 @@ namespace screen_capturer_windows {
 		endPoint.x = NULL;
 		endPoint.y = NULL;
 
+		return selectionRect;
+	}
+	*/
+
+	RECT ShowSelectionOverlay() {
+		EnumDisplayMonitors(NULL, NULL, MonitorEnumProc, 0);
+	
+		RECT combinedRect = {};
+		for (const auto& monitorRect : monitorRects) {
+			combinedRect.left = min(combinedRect.left, monitorRect.left);
+			combinedRect.top = min(combinedRect.top, monitorRect.top);
+			combinedRect.right = max(combinedRect.right, monitorRect.right);
+			combinedRect.bottom = max(combinedRect.bottom, monitorRect.bottom);
+		}
+	
+		WNDCLASS wc = {};
+		wc.lpfnWndProc = OverlayProc;
+		wc.hInstance = GetModuleHandle(NULL);
+		wc.lpszClassName = L"SelectionOverlay";
+		RegisterClass(&wc);
+	
+		overlayWindow = CreateWindowEx(WS_EX_TOPMOST | WS_EX_LAYERED, L"SelectionOverlay", NULL,
+			WS_POPUP, combinedRect.left, combinedRect.top,
+			combinedRect.right - combinedRect.left, combinedRect.bottom - combinedRect.top,
+			NULL, NULL, GetModuleHandle(NULL), NULL);
+	
+		SetLayeredWindowAttributes(overlayWindow, 0, 64, LWA_ALPHA);
+		
+		// Enable keyboard input
+		SetFocus(overlayWindow);
+		
+		ShowWindow(overlayWindow, SW_SHOW);
+		UpdateWindow(overlayWindow);
+		MSG msg;
+		while (GetMessage(&msg, NULL, 0, 0)) {
+			TranslateMessage(&msg);
+			DispatchMessage(&msg);
+			if (!IsWindow(overlayWindow)) break;
+		}
+		
+		RECT selectionRect = { min(startPoint.x, endPoint.x), min(startPoint.y, endPoint.y),
+		max(startPoint.x, endPoint.x), max(startPoint.y, endPoint.y) };
+	
+		std::cout << "RECT: { left: " << startPoint.x
+		<< ", top: " << startPoint.y 
+		<< ", right: " <<  endPoint.x
+		<< ", bottom: " <<  endPoint.y
+		<< " }" << std::endl;
+	
+		startPoint.x = NULL;
+		startPoint.y = NULL;
+		endPoint.x = NULL;
+		endPoint.y = NULL;
+	
 		return selectionRect;
 	}
 
