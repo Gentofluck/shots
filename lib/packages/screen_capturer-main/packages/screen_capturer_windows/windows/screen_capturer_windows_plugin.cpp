@@ -235,6 +235,13 @@ namespace screen_capturer_windows {
 			HDC hdcSelectionDC = CreateCompatibleDC(NULL);
 			int width = selection.right - selection.left;
 			int height = selection.bottom - selection.top;
+
+			if (selection.left == selection.right || selection.top == selection.bottom) {
+				isScreening = false;
+				result->Success(); 
+				return;
+			}
+
 			HBITMAP hbitmapSelection = CreateCompatibleBitmap(hdcScreen, width, height);
 			SelectObject(hdcSelectionDC, hbitmapSelection);
 	

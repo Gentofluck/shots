@@ -130,6 +130,7 @@ class ScreenshotEditorState extends State<ScreenshotEditor> {
 
 		final combinedImage = await _combineImages(widget.screenshot!, scaledDrawing);
 
+
 		final response = await widget.shotsClient.uploadImage(combinedImage);
 
 		if (response.isNotEmpty && response != 'ERROR') {
@@ -211,10 +212,8 @@ class ScreenshotEditorState extends State<ScreenshotEditor> {
 							} else if (isCtrlOrCmdPressed && event.logicalKey == LogicalKeyboardKey.keyZ) {
 								if (_textFocusNode.hasFocus) return;
 								if (isShiftPressed) {
-									print('redo');
 									widget.drawingService.redo(); 	
 								} else {
-									print('undo');
 									widget.drawingService.undo();	
 								}
 								setState(() {});
@@ -253,8 +252,6 @@ class ScreenshotEditorState extends State<ScreenshotEditor> {
 												start = textStroke.start + textStroke.getTotalTranslation();
 												currentText = textStroke.currentText;
 												_textSize = textStroke.size;
-												print('textStroke: ${currentText}');
-												print(_textSize);
 											}
 											else
 											{
