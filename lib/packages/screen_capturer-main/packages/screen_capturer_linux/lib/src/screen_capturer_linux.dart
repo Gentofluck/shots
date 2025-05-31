@@ -44,13 +44,13 @@ class ScreenCapturerLinux extends MethodChannelScreenCapturer {
 
   @override
   SystemScreenCapturer get systemScreenCapturer {
-    /*if (isKdeDesktop) {
+    if (isKdeDesktop) {
       return spectacle;
     }
 
     if (isDeepinDesktop) {
       return deepinScreenRecorder;
-    }*/
+    }
     return gnomeScreenshot;
   }
 }
