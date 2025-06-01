@@ -59,6 +59,7 @@ class _ScreenshotPageState extends State<ScreenshotPage> with WindowListener {
 			onHideWindow: hideWindow,
 			onMakeShot: widget.makeShot,
 			onOpenSettings: openSettings,
+      onOpenAuth: openAuth,
 		);
 		_systemTrayService.initTray();
 
@@ -126,6 +127,9 @@ class _ScreenshotPageState extends State<ScreenshotPage> with WindowListener {
 
 	void openSettings() {
 		widget.changePage("settingsPage");
+	}
+  void openAuth() {
+		widget.changePage("authPage");
 	}
 
 

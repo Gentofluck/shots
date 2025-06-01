@@ -7,6 +7,8 @@ class ShotsClient {
 	final String _baseUrl = "https://shots.m18.ru/";
 	String? token;
 	String? email;
+  String? password;
+
 
 	bool get hasToken => token?.isNotEmpty ?? false;
 
@@ -14,6 +16,7 @@ class ShotsClient {
 		final prefs = await SharedPreferences.getInstance();
 		token = prefs.getString('token');
 		email = prefs.getString('email');
+    password = prefs.getString('password');
 	}
 
 	Future<bool> authenticate(String email, String password) async {
@@ -30,9 +33,11 @@ class ShotsClient {
 		final prefs = await SharedPreferences.getInstance();
 		prefs.setString('token', response);
 		prefs.setString('email', email);
+    prefs.setString('password', password);
 
 		token = response;
 		this.email = email;
+    this.password = password;
 
 		return true;
 	}
@@ -44,14 +49,13 @@ class ShotsClient {
 	}
 
 	Future<bool> checkToken() async {
-		if (token == null) return false;
+		if (token == null && (email == null || password == null)) return false;
 
 		final response = await _getRequest("ping/$token/");
 		
 		if (response == "OK$token") return true;
 		else {
-			token = null; 
-			return false;
+			return await authenticate(email!, password!);
 		}
 	}
 

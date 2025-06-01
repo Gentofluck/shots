@@ -13,12 +13,14 @@ class SystemTrayService {
 	final VoidCallback onHideWindow;
 	final VoidCallback onMakeShot;
 	final VoidCallback onOpenSettings;
+  final VoidCallback onOpenAuth;
 
 	SystemTrayService({
 		required this.onShowWindow,
 		required this.onHideWindow,
 		required this.onMakeShot,
 		required this.onOpenSettings,
+    required this.onOpenAuth,
 	});
 
 	String _getTrayImagePath(String imageName) {
@@ -50,6 +52,10 @@ class SystemTrayService {
 			MenuItemLabel(
 				label: 'Настройки',
 				onClicked: (menuItem) => onOpenSettings(),
+			),
+      MenuItemLabel(
+				label: 'Авторизация',
+				onClicked: (menuItem) => onOpenAuth(),
 			),
 			MenuSeparator(),
 			MenuItemLabel(

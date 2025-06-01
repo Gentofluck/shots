@@ -23,6 +23,8 @@ namespace screen_capturer_windows {
 	bool selecting = false;
 	bool needsRedraw = false;
 	bool isScreening = false;
+	HBITMAP frozenScreenBitmap = NULL;
+    HWND frozenScreenWindow = NULL;
 	
 	std::vector<RECT> monitorRects;
 
@@ -31,72 +33,66 @@ namespace screen_capturer_windows {
 		return TRUE;
 	}
 
-	/*LRESULT CALLBACK OverlayProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam) {      
-		SetCursor(LoadCursor(NULL, IDC_CROSS));
+	// Функция для заморозки экрана
+    void FreezeScreen() {
+        // Получаем размеры всех мониторов
+        monitorRects.clear();
+        EnumDisplayMonitors(NULL, NULL, MonitorEnumProc, 0);
+        
+        // Определяем общие границы
+        RECT combinedRect = {};
+        for (const auto& monitorRect : monitorRects) {
+            combinedRect.left = min(combinedRect.left, monitorRect.left);
+            combinedRect.top = min(combinedRect.top, monitorRect.top);
+            combinedRect.right = max(combinedRect.right, monitorRect.right);
+            combinedRect.bottom = max(combinedRect.bottom, monitorRect.bottom);
+        }
+        
+        // Создаем скриншот
+        HDC hdcScreen = GetDC(NULL);
+        HDC hdcMem = CreateCompatibleDC(hdcScreen);
+        frozenScreenBitmap = CreateCompatibleBitmap(hdcScreen, 
+            combinedRect.right - combinedRect.left, 
+            combinedRect.bottom - combinedRect.top);
+        
+        SelectObject(hdcMem, frozenScreenBitmap);
+        BitBlt(hdcMem, 0, 0, 
+            combinedRect.right - combinedRect.left, 
+            combinedRect.bottom - combinedRect.top, 
+            hdcScreen, combinedRect.left, combinedRect.top, SRCCOPY);
+        
+        // Очищаем ресурсы
+        DeleteDC(hdcMem);
+        ReleaseDC(NULL, hdcScreen);
+    }
+    
+    // Обработчик сообщений для окна замороженного экрана
+    LRESULT CALLBACK FrozenScreenProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam) {
+        switch (message) {
+            case WM_PAINT: {
+                PAINTSTRUCT ps;
+                HDC hdc = BeginPaint(hwnd, &ps);
+                
+                // Рисуем замороженный скриншот
+                HDC hdcMem = CreateCompatibleDC(hdc);
+                SelectObject(hdcMem, frozenScreenBitmap);
+                
+                RECT rect;
+                GetClientRect(hwnd, &rect);
+                BitBlt(hdc, 0, 0, rect.right, rect.bottom, hdcMem, 0, 0, SRCCOPY);
+                
+                DeleteDC(hdcMem);
+                EndPaint(hwnd, &ps);
+                return 0;
+            }
+            
+            case WM_ERASEBKGND:
+                return 1; // Предотвращаем мерцание
+        }
+        return DefWindowProc(hwnd, message, wParam, lParam);
+    }
 
-		switch (message) {
-			case WM_LBUTTONDOWN:
-				selecting = true;
-				startPoint.x = LOWORD(lParam);
-				startPoint.y = HIWORD(lParam);
-				endPoint = startPoint;
-				return 0;
-			case WM_MOUSEMOVE:
-				if (selecting) {
-					endPoint.x = LOWORD(lParam);
-					endPoint.y = HIWORD(lParam);
 
-					if (startPoint.x != endPoint.x || startPoint.y != endPoint.y) {
-						needsRedraw = true;
-					}
-
-					if (needsRedraw) {
-						InvalidateRect(hwnd, NULL, TRUE);
-						needsRedraw = false;
-					}
-				}
-				return 0;
-			case WM_LBUTTONUP:
-				selecting = false;
-				DestroyWindow(hwnd);
-				return 0;
-				case WM_PAINT: {
-				PAINTSTRUCT ps;
-				HDC hdc = BeginPaint(hwnd, &ps);
-			
-				RECT rect;
-				GetClientRect(hwnd, &rect);
-				int width = rect.right - rect.left;
-				int height = rect.bottom - rect.top;
-			
-				HDC hdcMem = CreateCompatibleDC(hdc);
-				HBITMAP hBitmap = CreateCompatibleBitmap(hdc, width, height);
-				HGDIOBJ oldBmp = SelectObject(hdcMem, hBitmap);
-			
-				HBRUSH fillBrush = CreateSolidBrush(RGB(0, 0, 0));
-				RECT fillRect = {startPoint.x, startPoint.y, endPoint.x, endPoint.y};
-				FillRect(hdcMem, &fillRect, fillBrush); 
-			
-				HPEN borderPen = CreatePen(PS_SOLID, 2, RGB(255, 255, 255));  
-				SelectObject(hdcMem, borderPen);
-			
-				Rectangle(hdcMem, startPoint.x, startPoint.y, endPoint.x, endPoint.y);
-			
-				BitBlt(hdc, 0, 0, width, height, hdcMem, 0, 0, SRCCOPY);
-			
-				DeleteObject(fillBrush);
-				DeleteObject(borderPen);
-				SelectObject(hdcMem, oldBmp);
-				DeleteDC(hdcMem);
-				DeleteObject(hBitmap);
-			
-				EndPaint(hwnd, &ps);
-				return 0;
-			}
-				
-		}
-		return DefWindowProc(hwnd, message, wParam, lParam);
-	}*/
 	LRESULT CALLBACK OverlayProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam) {      
 		SetCursor(LoadCursor(NULL, IDC_CROSS));
 	
@@ -178,109 +174,87 @@ namespace screen_capturer_windows {
 		return DefWindowProc(hwnd, message, wParam, lParam);
 	}
 
-	/*
 	RECT ShowSelectionOverlay() {
-		EnumDisplayMonitors(NULL, NULL, MonitorEnumProc, 0);
+        // Создаем окно для замороженного экрана
+		startPoint.x = startPoint.y = endPoint.x = endPoint.y = 0;
+        WNDCLASS wcFrozen = {};
+        wcFrozen.lpfnWndProc = FrozenScreenProc;
+        wcFrozen.hInstance = GetModuleHandle(NULL);
+        wcFrozen.lpszClassName = L"FrozenScreen";
+        RegisterClass(&wcFrozen);
+        
+        RECT combinedRect = {};
+        for (const auto& monitorRect : monitorRects) {
+            combinedRect.left = min(combinedRect.left, monitorRect.left);
+            combinedRect.top = min(combinedRect.top, monitorRect.top);
+            combinedRect.right = max(combinedRect.right, monitorRect.right);
+            combinedRect.bottom = max(combinedRect.bottom, monitorRect.bottom);
+        }
+        
+        // Создаем прозрачное окно поверх всего экрана
+        frozenScreenWindow = CreateWindowEx(
+            WS_EX_TOPMOST | WS_EX_LAYERED | WS_EX_TRANSPARENT,
+            L"FrozenScreen", NULL,
+            WS_POPUP,
+            combinedRect.left, combinedRect.top,
+            combinedRect.right - combinedRect.left,
+            combinedRect.bottom - combinedRect.top,
+            NULL, NULL, GetModuleHandle(NULL), NULL);
+        
+        // Устанавливаем прозрачность (можно регулировать)
+		SetLayeredWindowAttributes(frozenScreenWindow, 0, 255, LWA_ALPHA);
 
-		RECT combinedRect = {};
-		for (const auto& monitorRect : monitorRects) {
-			combinedRect.left = min(combinedRect.left, monitorRect.left);
-			combinedRect.top = min(combinedRect.top, monitorRect.top);
-			combinedRect.right = max(combinedRect.right, monitorRect.right);
-			combinedRect.bottom = max(combinedRect.bottom, monitorRect.bottom);
-		}
-
-		WNDCLASS wc = {};
-		wc.lpfnWndProc = OverlayProc;
-		wc.hInstance = GetModuleHandle(NULL);
-		wc.lpszClassName = L"SelectionOverlay";
-		RegisterClass(&wc);
-
-		overlayWindow = CreateWindowEx(WS_EX_TOPMOST | WS_EX_LAYERED, L"SelectionOverlay", NULL,
-			WS_POPUP, combinedRect.left, combinedRect.top,
-			combinedRect.right - combinedRect.left, combinedRect.bottom - combinedRect.top,
-			NULL, NULL, GetModuleHandle(NULL), NULL);
-
-		SetLayeredWindowAttributes(overlayWindow, 0, 64, LWA_ALPHA);
-		ShowWindow(overlayWindow, SW_SHOW);
-		UpdateWindow(overlayWindow);
-		MSG msg;
-		while (GetMessage(&msg, NULL, 0, 0)) {
-			TranslateMessage(&msg);
-			DispatchMessage(&msg);
-			if (!IsWindow(overlayWindow)) break;
-		}
-		
-		RECT selectionRect = { min(startPoint.x, endPoint.x), min(startPoint.y, endPoint.y),
-		max(startPoint.x, endPoint.x), max(startPoint.y, endPoint.y) };
-
-		std::cout << "RECT: { left: " << startPoint.x
-		<< ", top: " << startPoint.y 
-		<< ", right: " <<  endPoint.x
-		<< ", bottom: " <<  endPoint.y
-		<< " }" << std::endl;
-
-		startPoint.x = NULL;
-		startPoint.y = NULL;
-		endPoint.x = NULL;
-		endPoint.y = NULL;
-
-		return selectionRect;
-	}
-	*/
-
-	RECT ShowSelectionOverlay() {
-		EnumDisplayMonitors(NULL, NULL, MonitorEnumProc, 0);
-	
-		RECT combinedRect = {};
-		for (const auto& monitorRect : monitorRects) {
-			combinedRect.left = min(combinedRect.left, monitorRect.left);
-			combinedRect.top = min(combinedRect.top, monitorRect.top);
-			combinedRect.right = max(combinedRect.right, monitorRect.right);
-			combinedRect.bottom = max(combinedRect.bottom, monitorRect.bottom);
-		}
-	
-		WNDCLASS wc = {};
-		wc.lpfnWndProc = OverlayProc;
-		wc.hInstance = GetModuleHandle(NULL);
-		wc.lpszClassName = L"SelectionOverlay";
-		RegisterClass(&wc);
-	
-		overlayWindow = CreateWindowEx(WS_EX_TOPMOST | WS_EX_LAYERED, L"SelectionOverlay", NULL,
-			WS_POPUP, combinedRect.left, combinedRect.top,
-			combinedRect.right - combinedRect.left, combinedRect.bottom - combinedRect.top,
-			NULL, NULL, GetModuleHandle(NULL), NULL);
-	
-		SetLayeredWindowAttributes(overlayWindow, 0, 64, LWA_ALPHA);
-		
-		// Enable keyboard input
-		SetFocus(overlayWindow);
-		
-		ShowWindow(overlayWindow, SW_SHOW);
-		UpdateWindow(overlayWindow);
-		MSG msg;
-		while (GetMessage(&msg, NULL, 0, 0)) {
-			TranslateMessage(&msg);
-			DispatchMessage(&msg);
-			if (!IsWindow(overlayWindow)) break;
-		}
-		
-		RECT selectionRect = { min(startPoint.x, endPoint.x), min(startPoint.y, endPoint.y),
-		max(startPoint.x, endPoint.x), max(startPoint.y, endPoint.y) };
-	
-		std::cout << "RECT: { left: " << startPoint.x
-		<< ", top: " << startPoint.y 
-		<< ", right: " <<  endPoint.x
-		<< ", bottom: " <<  endPoint.y
-		<< " }" << std::endl;
-	
-		startPoint.x = NULL;
-		startPoint.y = NULL;
-		endPoint.x = NULL;
-		endPoint.y = NULL;
-	
-		return selectionRect;
-	}
+        ShowWindow(frozenScreenWindow, SW_SHOW);
+        UpdateWindow(frozenScreenWindow);
+        
+        // Далее оригинальный код создания окна выбора области
+        WNDCLASS wc = {};
+        wc.lpfnWndProc = OverlayProc;
+        wc.hInstance = GetModuleHandle(NULL);
+        wc.lpszClassName = L"SelectionOverlay";
+        RegisterClass(&wc);
+        
+        overlayWindow = CreateWindowEx(
+            WS_EX_TOPMOST | WS_EX_LAYERED, 
+            L"SelectionOverlay", NULL,
+            WS_POPUP, 
+            combinedRect.left, combinedRect.top,
+            combinedRect.right - combinedRect.left, 
+            combinedRect.bottom - combinedRect.top,
+            NULL, NULL, GetModuleHandle(NULL), NULL);
+        
+        SetLayeredWindowAttributes(overlayWindow, 0, 64, LWA_ALPHA);
+        SetFocus(overlayWindow);
+        
+        ShowWindow(overlayWindow, SW_SHOW);
+        UpdateWindow(overlayWindow);
+        
+        // Обработка сообщений
+        MSG msg;
+        while (GetMessage(&msg, NULL, 0, 0)) {
+            TranslateMessage(&msg);
+            DispatchMessage(&msg);
+            if (!IsWindow(overlayWindow)) break;
+        }
+        
+        // Очищаем ресурсы
+        DestroyWindow(frozenScreenWindow);
+        if (frozenScreenBitmap) {
+            
+			//DeleteObject(frozenScreenBitmap);
+            //frozenScreenBitmap = NULL;
+        }
+        
+        // Возвращаем выбранную область
+        RECT selectionRect = { 
+            min(startPoint.x, endPoint.x), 
+            min(startPoint.y, endPoint.y),
+            max(startPoint.x, endPoint.x), 
+            max(startPoint.y, endPoint.y) 
+        };
+        
+        return selectionRect;
+    }
 
 	// Зарегистрируем плагин
 	void ScreenCapturerWindowsPlugin::RegisterWithRegistrar(flutter::PluginRegistrarWindows* registrar) {
@@ -346,30 +320,14 @@ namespace screen_capturer_windows {
 		stream->Release();
 	}
 	
-	
-	// Основная функция захвата экрана
 	void ScreenCapturerWindowsPlugin::CaptureScreen(
-		const flutter::MethodCall<flutter::EncodableValue>& method_call,
-		std::unique_ptr<flutter::MethodResult<flutter::EncodableValue>> result) {
-		
+    const flutter::MethodCall<flutter::EncodableValue>& method_call,
+    std::unique_ptr<flutter::MethodResult<flutter::EncodableValue>> result) {
 		if (!isScreening) {
 			isScreening = true;
-	
+
+			FreezeScreen();
 			RECT selection = ShowSelectionOverlay();
-			std::vector<RECT> monitors = monitorRects;
-	
-			HDC hdcScreen = GetDC(NULL);
-			HDC hdcMemDC = CreateCompatibleDC(hdcScreen);
-			HBITMAP hbitmap = NULL;
-			std::vector<BYTE> imgData;
-	
-			// Захват всех мониторов
-			CaptureMultipleMonitors(hdcScreen, monitors, hdcMemDC, hbitmap, imgData);
-	
-			// Вырезаем нужную область из hbitmap
-			HDC hdcSelectionDC = CreateCompatibleDC(NULL);
-			int width = selection.right - selection.left;
-			int height = selection.bottom - selection.top;
 
 			if (selection.left == selection.right || selection.top == selection.bottom) {
 				isScreening = false;
@@ -377,89 +335,58 @@ namespace screen_capturer_windows {
 				return;
 			}
 
+			// Работаем с замороженным скриншотом
+			HDC hdcScreen = GetDC(NULL);
+			HDC hdcMemDC = CreateCompatibleDC(hdcScreen);
+			SelectObject(hdcMemDC, frozenScreenBitmap);
+
+			// Вырезаем нужную область из frozenScreenBitmap
+			int width = selection.right - selection.left;
+			int height = selection.bottom - selection.top;
+			
+			HDC hdcSelectionDC = CreateCompatibleDC(NULL);
 			HBITMAP hbitmapSelection = CreateCompatibleBitmap(hdcScreen, width, height);
 			SelectObject(hdcSelectionDC, hbitmapSelection);
-	
-			// Копируем выделенную область
-			BitBlt(hdcSelectionDC, 0, 0, width, height, hdcMemDC, selection.left, selection.top, SRCCOPY);
-	
+
+			// Копируем выделенную область из frozenScreenBitmap
+			BitBlt(hdcSelectionDC, 0, 0, width, height, 
+				hdcMemDC, selection.left, selection.top, SRCCOPY);
+
 			// Конвертация в PNG
 			CImage img;
 			img.Attach(hbitmapSelection);
 			IStream* stream = NULL;
 			CreateStreamOnHGlobal(NULL, TRUE, &stream);
 			img.Save(stream, Gdiplus::ImageFormatPNG);
-	
+
 			// Получаем данные
 			ULARGE_INTEGER liSize;
 			IStream_Size(stream, &liSize);
 			DWORD len = liSize.LowPart;
 			IStream_Reset(stream);
-	
-			imgData.resize(len);
+
+			std::vector<BYTE> imgData(len);
 			IStream_Read(stream, imgData.data(), len);
 			stream->Release();
-	
+
 			// Возвращаем выделенную область
 			result->Success(imgData);
-	
+
 			// Очистка ресурсов
 			DeleteObject(hbitmapSelection);
 			DeleteDC(hdcSelectionDC);
-			DeleteObject(hbitmap);
-			DeleteDC(hdcMemDC);
-			ReleaseDC(NULL, hdcScreen);
-		}
-	
-		isScreening = false;
-	}
-	
-	
-	/*
-	void ScreenCapturerWindowsPlugin::CaptureScreen(const flutter::MethodCall<flutter::EncodableValue>& method_call, 
-	std::unique_ptr<flutter::MethodResult<flutter::EncodableValue>> result) {
-		std::cout << isScreening << std::endl;
-		if (!isScreening)
-		{
-			isScreening = true;
-
-			RECT selection = ShowSelectionOverlay();
-
-			HDC hdcScreen = GetDC(NULL);
-			HDC hdcMemDC = CreateCompatibleDC(hdcScreen);
-			HBITMAP hbitmap = CreateCompatibleBitmap(hdcScreen, selection.right - selection.left, selection.bottom - selection.top);
-			SelectObject(hdcMemDC, hbitmap);
-			BitBlt(hdcMemDC, 0, 0, selection.right - selection.left, selection.bottom - selection.top, hdcScreen, selection.left, selection.top, SRCCOPY);
-
-			std::cout << "Лог: программа запущена" << std::endl;
-
-			CImage img;
-			img.Attach(hbitmap);
-
-			std::vector<BYTE> imgData;
-			IStream* stream = NULL;
-			CreateStreamOnHGlobal(NULL, TRUE, &stream);
-			img.Save(stream, Gdiplus::ImageFormatPNG);
-
-			ULARGE_INTEGER liSize;
-			IStream_Size(stream, &liSize);
-			DWORD len = liSize.LowPart;
-			IStream_Reset(stream);
-
-			imgData.resize(len);
-			IStream_Read(stream, imgData.data(), len);
-			stream->Release();
-
-			result->Success(imgData);
-
-			DeleteObject(hbitmap);
 			DeleteDC(hdcMemDC);
 			ReleaseDC(NULL, hdcScreen);
 			
+			if (frozenScreenBitmap) {
+				DeleteObject(frozenScreenBitmap);
+				frozenScreenBitmap = NULL;
+			}
 		}
+		
 		isScreening = false;
-
-	}*/
+	}
+		
 
 	std::string ToBase64(const std::vector<BYTE>& input) {
 		static const char* base64_chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
