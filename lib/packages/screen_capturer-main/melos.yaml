@@ -1,5 +1,4 @@
 name: screen_capturer_workspace
-repository: https://github.com/leanflutter/screen_capturer
 
 packages:
   - examples/**
@@ -7,7 +6,6 @@ packages:
 
 command:
   bootstrap:
-    # Uses the pubspec_overrides.yaml instead of having Melos modifying the lock file.
     usePubspecOverrides: true
 
 scripts:

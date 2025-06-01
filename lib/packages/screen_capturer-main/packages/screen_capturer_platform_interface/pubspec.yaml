@@ -1,7 +1,6 @@
 name: screen_capturer_platform_interface
 description: A common platform interface for the screen_capturer plugin.
 version: 0.2.2
-homepage: https://github.com/leanflutter/screen_capturer/blob/main/packages/screen_capturer_platform_interface
 
 environment:
   sdk: ">=3.0.0 <4.0.0"
