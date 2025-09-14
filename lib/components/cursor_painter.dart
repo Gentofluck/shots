@@ -1,12 +1,14 @@
 import 'package:flutter/material.dart';
 
-class CursorPainter extends CustomPainter {
+class CursorPainter extends CustomPainter 
+{
 	final Color color;
 
 	CursorPainter(this.color);
 
 	@override
-	void paint(Canvas canvas, Size size) {
+	void paint(Canvas canvas, Size size) 
+	{
 		final paint = Paint()
 			..color = color
 			..style = PaintingStyle.fill;
@@ -15,7 +17,8 @@ class CursorPainter extends CustomPainter {
 	}
 
 	@override
-	bool shouldRepaint(CustomPainter oldDelegate) {
+	bool shouldRepaint(CustomPainter oldDelegate) 
+	{
 		return false;
 	}
 }

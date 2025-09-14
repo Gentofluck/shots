@@ -242,6 +242,7 @@ class ScreenshotToolbar extends StatelessWidget {
 			{'icon': 'text', 'tool': 'text'},
 			{'icon': 'text_num', 'tool': 'text_num'},
 			{'icon': 'move', 'tool': 'move'},
+			{'icon': 'cut', 'tool': 'cut'},
 			{'icon': 'eraser', 'tool': 'eraser'},
 		].map((item) {
 			return Padding(

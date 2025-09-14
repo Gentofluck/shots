@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_svg/flutter_svg.dart';
 import 'package:hotkey_manager/hotkey_manager.dart';
 import '../services/api/client.dart';
 
@@ -8,14 +7,14 @@ class HomePage extends StatefulWidget {
   final ValueChanged<HotKey> onSendHotKeyRecorded;
   final Function(String) changePage;
   final ShotsClient shotsClient;
-	final List<HotKey> registeredHotKeyList;
+  final List<HotKey> registeredHotKeyList;
 
-  HomePage({
+  const HomePage({
     required this.changePage,
     required this.onScreenshotHotKeyRecorded,
     required this.onSendHotKeyRecorded,
     required this.shotsClient,
-		required this.registeredHotKeyList,
+    required this.registeredHotKeyList,
     super.key,
   });
 
@@ -29,23 +28,35 @@ class _HomePageState extends State<HomePage> {
   bool _isRecordingScreenshot = false;
   bool _isRecordingSend = false;
 
-	@override
+  @override
   void initState() {
-		super.initState(); 
-		setState(() {
-		  _screenshotHotKey = (widget.registeredHotKeyList.isNotEmpty ? widget.registeredHotKeyList.first : null);
-			_sendHotKey = (widget.registeredHotKeyList.length > 0 ? widget.registeredHotKeyList[1] : null);
-		});
+    super.initState();
+    setState(() {
+      _screenshotHotKey =
+          (widget.registeredHotKeyList.isNotEmpty
+              ? widget.registeredHotKeyList.first
+              : null);
+      _sendHotKey =
+          (widget.registeredHotKeyList.isNotEmpty
+              ? widget.registeredHotKeyList[1]
+              : null);
+    });
   }
 
-	@override
-	void didUpdateWidget(covariant HomePage oldWidget) {
-		setState(() {
-		  _screenshotHotKey = (widget.registeredHotKeyList.isNotEmpty ? widget.registeredHotKeyList.first : null);
-			_sendHotKey = (widget.registeredHotKeyList.length > 1 ? widget.registeredHotKeyList[1] : null);
-		});
-	}
-	
+  @override
+  void didUpdateWidget(covariant HomePage oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    setState(() {
+      _screenshotHotKey =
+          (widget.registeredHotKeyList.isNotEmpty
+              ? widget.registeredHotKeyList.first
+              : null);
+      _sendHotKey =
+          (widget.registeredHotKeyList.length > 1
+              ? widget.registeredHotKeyList[1]
+              : null);
+    });
+  }
 
   void _startRecordingScreenshot() {
     setState(() {
@@ -72,7 +83,7 @@ class _HomePageState extends State<HomePage> {
       onTap: onStartRecording,
       child: Container(
         height: 75,
-		    width: 228,
+        width: 228,
         decoration: BoxDecoration(
           color: isRecording ? Colors.grey[200] : null,
           borderRadius: BorderRadius.circular(8),
@@ -88,7 +99,7 @@ class _HomePageState extends State<HomePage> {
                 fontWeight: FontWeight.w500,
                 fontSize: 14,
                 decoration: TextDecoration.none,
-                color: Colors.black
+                color: Colors.black,
               ),
             ),
             SizedBox(height: 10),
@@ -98,31 +109,27 @@ class _HomePageState extends State<HomePage> {
                 child: HotKeyRecorder(
                   onHotKeyRecorded: (hotKey) {
                     onKeyRecorded(hotKey);
-                    /*setState(() {
-                      _isRecordingScreenshot = false;
-                      _isRecordingSend = false;
-                    });*/
                   },
                 ),
               )
             else if (currentKey != null)
-							DefaultTextStyle(
-								style: TextStyle(decoration: TextDecoration.none),
-								child: HotKeyVirtualView(hotKey: currentKey)
-							)
+              DefaultTextStyle(
+                style: TextStyle(decoration: TextDecoration.none),
+                child: HotKeyVirtualView(hotKey: currentKey),
+              )
             else
-							DefaultTextStyle(
-								style: TextStyle(decoration: TextDecoration.none),
-								child: Text(
-									"Нажмите чтобы записать",
-									style: TextStyle(
+              DefaultTextStyle(
+                style: TextStyle(decoration: TextDecoration.none),
+                child: Text(
+                  "Нажмите чтобы записать",
+                  style: TextStyle(
                     fontFamily: 'IBMPlexMono',
                     fontWeight: FontWeight.w500,
-                    fontSize: 12, 
-                    color: Colors.grey
+                    fontSize: 12,
+                    color: Colors.grey,
                   ),
-								),
-							)
+                ),
+              ),
           ],
         ),
       ),
@@ -149,7 +156,7 @@ class _HomePageState extends State<HomePage> {
             children: [
               _buildHotKeySection(
                 title: "Создание скриншота",
-								currentKey: _screenshotHotKey,
+                currentKey: _screenshotHotKey,
                 onStartRecording: _startRecordingScreenshot,
                 isRecording: _isRecordingScreenshot,
                 onKeyRecorded: (hotKey) {
@@ -159,27 +166,30 @@ class _HomePageState extends State<HomePage> {
               SizedBox(height: 10),
               _buildHotKeySection(
                 title: "Отправка скриншота",
-								currentKey: _sendHotKey,
+                currentKey: _sendHotKey,
                 onStartRecording: _startRecordingSend,
                 isRecording: _isRecordingSend,
                 onKeyRecorded: (hotKey) {
                   setState(() => _sendHotKey = hotKey);
                 },
               ),
-              
+
               SizedBox(height: 10),
               Align(
                 alignment: Alignment.bottomCenter,
                 child: Padding(
                   padding: EdgeInsets.all(10),
                   child: ElevatedButton(
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Color(0xFF425AD0),
-                        foregroundColor: Colors.white,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(4),
-                        ),
-                        padding: EdgeInsets.symmetric(vertical: 14, horizontal: 32),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Color(0xFF425AD0),
+                      foregroundColor: Colors.white,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                      padding: EdgeInsets.symmetric(
+                        vertical: 14,
+                        horizontal: 32,
+                      ),
                     ),
                     onPressed: () {
                       if (_screenshotHotKey != null && _sendHotKey != null) {
@@ -192,8 +202,8 @@ class _HomePageState extends State<HomePage> {
                       "Сохранить настройки",
                       style: TextStyle(
                         fontFamily: 'IBMPlexMono',
-												fontWeight: FontWeight.w500,
-												fontSize: 14,
+                        fontWeight: FontWeight.w500,
+                        fontSize: 14,
                       ),
                     ),
                   ),
